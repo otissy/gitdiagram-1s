@@ -25,6 +25,7 @@ GitDiagram 1s is a Windows and Linux desktop application combining the fast, com
 ## Sources of truth
 
 - File scanner & Git parser → `src/main/services/gitService.js` and `src/main/services/fileService.js`
+- Security hardening & input sanitization → `src/main/services/securityService.js` and `src/renderer/js/securityUtils.js`
 - Symbol & call hierarchy extractor → `src/main/services/symbolService.js`
 - Diagram extraction & AST dependency resolver → `src/main/services/diagramService.js`
 - GitHub remote cloning & authentication → `src/main/services/githubRemoteService.js`
@@ -32,10 +33,30 @@ GitDiagram 1s is a Windows and Linux desktop application combining the fast, com
 - Symbols & Outline Controller → `src/renderer/js/outlineController.js`
 - Frontend UI & Monaco/Canvas controller → `src/renderer/`
 
+## Security Architecture & Hardening
+
+1. **Git Process Isolation:**
+   - All Git CLI calls invoke `GIT_SECURITY_ARGS` (`-c core.hooksPath=`, `-c core.fsmonitor=`, `-c credential.helper=`, `-c diff.external=`, `-c diff.textconv=`) and `GIT_SAFE_ENV` (`GIT_TERMINAL_PROMPT=0`, `GIT_CONFIG_NOSYSTEM=1`). This blocks malicious repositories from executing hook scripts (`.bat`, `.sh`, `.exe`, `.ps1`), running untrusted filesystem monitors, or executing third-party diff tools.
+   - Positional separators (`--`) are passed before all URLs and clone targets to eliminate CLI flag injection.
+
+2. **Strict IPC & Path Validation:**
+   - `securityService.sanitizePathArg` validates all path inputs against null bytes, control characters, and dangerous URL protocols (`javascript:`, `data:`, `vbscript:`, `about:`, `blob:`).
+   - Branch names are validated with `isValidBranchName` to block option injection (e.g. `--upload-pack`, `-oProxyCommand`) and ref manipulation.
+   - Remote repository slugs are validated with `isValidSlugPart` to prevent flag injection.
+
+3. **Electron Session & Window Isolation:**
+   - Content-Security-Policy (CSP) is enforced both via HTTP headers (`session.defaultSession.webRequest.onHeadersReceived`) and `<meta http-equiv="Content-Security-Policy">` in renderer HTML (`default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';`).
+   - `nodeIntegration: false`, `contextIsolation: true`, `navigateOnDragDrop: false`, `allowRunningInsecureContent: false`, `webSecurity: true`.
+   - Popups and new windows are blocked via `setWindowOpenHandler` (only verified GitHub HTTPS URLs can be opened in the OS default browser). WebViews are explicitly rejected with `will-attach-webview`.
+   - All hardware/device permission requests are unconditionally rejected with `setPermissionRequestHandler`.
+
+4. **DOM & HTML Sanitization:**
+   - `escapeHtml` is applied to all repository-controlled strings (branch names, file paths, symbol signatures, commit messages, and API error strings) before DOM injection.
+
 ## Known problems
 
-None yet.
+None.
 
 ## Dropped approaches
 
-None yet.
+None.

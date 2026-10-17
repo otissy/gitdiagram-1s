@@ -2,16 +2,19 @@ const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const { GIT_SECURITY_ARGS, GIT_SAFE_ENV } = require('./securityService');
+
 /**
- * Execute git command safely
+ * Execute git command safely with security flags to prevent execution of untrusted hooks/scripts
  */
 function runGit(repoPath, args, options = {}) {
-  return new Promise((resolve, reject) => {
-    execFile('git', args, {
+  const fullArgs = [...GIT_SECURITY_ARGS, ...args];
+  return new Promise((resolve) => {
+    execFile('git', fullArgs, {
       cwd: repoPath,
       maxBuffer: options.maxBuffer || 15 * 1024 * 1024,
       encoding: 'utf8',
-      env: { ...process.env, LANG: 'en_US.UTF-8' }
+      env: GIT_SAFE_ENV
     }, (error, stdout, stderr) => {
       if (error) {
         resolve({ success: false, error: stderr || error.message, stdout: stdout || '', code: error.code });

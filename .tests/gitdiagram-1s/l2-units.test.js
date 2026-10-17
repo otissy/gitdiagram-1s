@@ -247,3 +247,125 @@ def validate(val):
   assert.ok(calls.some(c => c.source === 'Calculator.compute' && c.target === 'validate'));
 });
 
+test('L2: securityService validates and sanitizes paths strictly against injection', () => {
+  const { sanitizePathArg } = require('../../src/main/services/securityService');
+
+  // Valid paths
+  assert.equal(sanitizePathArg('  src/main/main.js  '), path.normalize('src/main/main.js'));
+  assert.equal(sanitizePathArg('folder/sub/file.ts'), path.normalize('folder/sub/file.ts'));
+
+  // Reject null-byte injection
+  assert.throws(() => sanitizePathArg('folder/\0evil.js'), /Invalid path argument/);
+
+  // Reject control characters
+  assert.throws(() => sanitizePathArg('folder/\r\nevil.js'), /Control characters detected/);
+
+  // Reject script protocols
+  assert.throws(() => sanitizePathArg('javascript:alert(1)'), /Malicious protocol detected/);
+  assert.throws(() => sanitizePathArg('data:text/html,<script>evil</script>'), /Malicious protocol detected/);
+  assert.throws(() => sanitizePathArg('vbscript:MsgBox(1)'), /Malicious protocol detected/);
+  assert.throws(() => sanitizePathArg('about:blank'), /Malicious protocol detected/);
+  assert.throws(() => sanitizePathArg('blob:https://evil.com/uuid'), /Malicious protocol detected/);
+
+  // Reject empty / non-string
+  assert.throws(() => sanitizePathArg(''), /Invalid path argument/);
+  assert.throws(() => sanitizePathArg(null), /Invalid path argument/);
+  assert.throws(() => sanitizePathArg(undefined), /Invalid path argument/);
+  assert.throws(() => sanitizePathArg({}), /Invalid path argument/);
+});
+
+test('L2: securityService validates branch names and rejects CLI option injections', () => {
+  const { isValidBranchName } = require('../../src/main/services/securityService');
+
+  // Valid git branch names
+  assert.equal(isValidBranchName('main'), true);
+  assert.equal(isValidBranchName('master'), true);
+  assert.equal(isValidBranchName('feature/login-modal'), true);
+  assert.equal(isValidBranchName('release-v1.0'), true);
+
+  // Option injection attacks starting with '-'
+  assert.equal(isValidBranchName('--upload-pack=touch /tmp/pwned'), false);
+  assert.equal(isValidBranchName('-oProxyCommand=evil'), false);
+
+  // Control characters and whitespace
+  assert.equal(isValidBranchName('main\0evil'), false);
+  assert.equal(isValidBranchName('branch with spaces'), false);
+  assert.equal(isValidBranchName('branch\nname'), false);
+
+  // Illegal git ref symbols
+  assert.equal(isValidBranchName('branch..name'), false);
+  assert.equal(isValidBranchName('branch~1'), false);
+  assert.equal(isValidBranchName('branch^2'), false);
+  assert.equal(isValidBranchName('branch:colon'), false);
+  assert.equal(isValidBranchName('branch?wildcard'), false);
+  assert.equal(isValidBranchName('branch*star'), false);
+  assert.equal(isValidBranchName('branch@{upstream}'), false);
+
+  // Empty / non-string
+  assert.equal(isValidBranchName(''), false);
+  assert.equal(isValidBranchName(null), false);
+});
+
+test('L2: securityService validates GitHub slug parts against option injection', () => {
+  const { isValidSlugPart } = require('../../src/main/services/securityService');
+
+  assert.equal(isValidSlugPart('facebook'), true);
+  assert.equal(isValidSlugPart('react'), true);
+  assert.equal(isValidSlugPart('my_project.org'), true);
+  assert.equal(isValidSlugPart('v1.2.3'), true);
+
+  // Malicious slugs starting with '-' (flag injection)
+  assert.equal(isValidSlugPart('--upload-pack'), false);
+  assert.equal(isValidSlugPart('-rf'), false);
+
+  // Malicious characters
+  assert.equal(isValidSlugPart('owner/repo'), false);
+  assert.equal(isValidSlugPart('owner;echo evil'), false);
+  assert.equal(isValidSlugPart('owner space'), false);
+});
+
+test('L2: securityService escapes untrusted strings against XSS injection', () => {
+  const { escapeHtml } = require('../../src/main/services/securityService');
+
+  assert.equal(escapeHtml('<script>alert("xss")</script>'), '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+  assert.equal(escapeHtml("Tom & Jerry's"), 'Tom &amp; Jerry&#39;s');
+  assert.equal(escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+  assert.equal(escapeHtml(null), '');
+  assert.equal(escapeHtml(undefined), '');
+  assert.equal(escapeHtml(12345), '12345');
+});
+
+test('L2: git security parameters enforce zero hooks, zero fsmonitor, and no credential leaks', () => {
+  const { GIT_SECURITY_ARGS, GIT_SAFE_ENV } = require('../../src/main/services/securityService');
+
+  // Verify security args contains hook, fsmonitor, and credential protection
+  assert.ok(GIT_SECURITY_ARGS.includes('core.hooksPath='));
+  assert.ok(GIT_SECURITY_ARGS.includes('core.fsmonitor='));
+  assert.ok(GIT_SECURITY_ARGS.includes('credential.helper='));
+  assert.ok(GIT_SECURITY_ARGS.includes('diff.external='));
+  assert.ok(GIT_SECURITY_ARGS.includes('diff.textconv='));
+
+  // Verify safe env disables interactive prompts and ignores system configs
+  assert.equal(GIT_SAFE_ENV.GIT_TERMINAL_PROMPT, '0');
+  assert.equal(GIT_SAFE_ENV.GIT_CONFIG_NOSYSTEM, '1');
+});
+
+test('L2: renderer index.html declares strict Content Security Policy without unsafe-inline scripts', () => {
+  const fs = require('fs');
+  const indexPath = path.resolve(__dirname, '../../src/renderer/index.html');
+  const content = fs.readFileSync(indexPath, 'utf8');
+
+  // Verify CSP meta tag exists
+  assert.ok(content.includes('<meta http-equiv="Content-Security-Policy"'), 'CSP meta tag must exist');
+  assert.ok(content.includes("default-src 'none'"), 'CSP must set default-src to none');
+  assert.ok(content.includes("script-src 'self'"), 'CSP must set script-src to self');
+
+  // Extract script-src directive and verify it strictly prohibits unsafe-inline
+  const cspMatch = content.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i);
+  assert.ok(cspMatch, 'CSP content must be extractable');
+  const scriptSrcPart = cspMatch[1].split(';').find(p => p.trim().startsWith('script-src'));
+  assert.ok(scriptSrcPart, 'script-src must be defined in CSP');
+  assert.equal(scriptSrcPart.includes("'unsafe-inline'"), false, 'script-src must NOT allow unsafe-inline');
+});
+
+

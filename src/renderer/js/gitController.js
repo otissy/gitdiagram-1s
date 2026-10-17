@@ -133,7 +133,7 @@ class GitController {
   createSection(title, fileList, isStaged) {
     const header = document.createElement('div');
     header.className = 'git-section-header';
-    header.innerHTML = `<span>${title} (${fileList.length})</span>`;
+    header.innerHTML = `<span>${typeof escapeHtml === 'function' ? escapeHtml(title) : title} (${fileList.length})</span>`;
     this.statusContainer.appendChild(header);
 
     for (const f of fileList) {
@@ -148,9 +148,11 @@ class GitController {
       const name = document.createElement('span');
       name.className = 'git-file-name';
       const parts = f.path.split('/');
-      const fileName = parts.pop();
-      const dirPath = parts.join('/');
-      name.innerHTML = `${fileName} <span class="git-file-dir">${dirPath}</span>`;
+      const rawFileName = parts.pop();
+      const rawDirPath = parts.join('/');
+      const safeFileName = typeof escapeHtml === 'function' ? escapeHtml(rawFileName) : rawFileName;
+      const safeDirPath = typeof escapeHtml === 'function' ? escapeHtml(rawDirPath) : rawDirPath;
+      name.innerHTML = `${safeFileName} <span class="git-file-dir">${safeDirPath}</span>`;
 
       item.appendChild(badge);
       item.appendChild(name);
@@ -250,13 +252,14 @@ class GitController {
     for (const b of branches) {
       const item = document.createElement('div');
       item.className = `branch-item ${b.isCurrent ? 'current' : ''}`;
+      const safeBranchName = typeof escapeHtml === 'function' ? escapeHtml(b.name) : b.name;
       item.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="6" y1="3" x2="6" y2="15"></line>
           <circle cx="18" cy="6" r="3"></circle>
           <circle cx="6" cy="18" r="3"></circle>
         </svg>
-        <span>${b.name}</span>
+        <span>${safeBranchName}</span>
         ${b.isCurrent ? '<span style="margin-left: auto; font-size: 10px;">(current)</span>' : ''}
       `;
 

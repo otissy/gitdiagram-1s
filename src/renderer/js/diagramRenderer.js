@@ -837,12 +837,13 @@ class DiagramRenderer {
 
   showSymbolTooltip(event, d) {
     if (!this.tooltip) return;
+    const esc = typeof escapeHtml === 'function' ? escapeHtml : str => str;
     this.tooltip.innerHTML = `
-      <div class="tooltip-title" style="color: ${this.getSymbolKindColor(d.kind)};">${d.kind.toUpperCase()}: ${d.name}</div>
-      <div class="tooltip-row"><span>File:</span> <code>${d.relativePath}</code></div>
-      <div class="tooltip-row"><span>Line:</span> <strong>Line ${d.line}</strong></div>
-      ${d.params ? `<div class="tooltip-row"><span>Params:</span> <code>(${d.params})</code></div>` : ''}
-      ${d.superClass ? `<div class="tooltip-row"><span>Extends:</span> <span>${d.superClass}</span></div>` : ''}
+      <div class="tooltip-title" style="color: ${this.getSymbolKindColor(d.kind)};">${esc(d.kind ? d.kind.toUpperCase() : '')}: ${esc(d.name)}</div>
+      <div class="tooltip-row"><span>File:</span> <code>${esc(d.relativePath)}</code></div>
+      <div class="tooltip-row"><span>Line:</span> <strong>Line ${esc(d.line)}</strong></div>
+      ${d.params ? `<div class="tooltip-row"><span>Params:</span> <code>(${esc(d.params)})</code></div>` : ''}
+      ${d.superClass ? `<div class="tooltip-row"><span>Extends:</span> <span>${esc(d.superClass)}</span></div>` : ''}
       <div class="tooltip-row" style="margin-top: 4px; font-size: 10px; color: var(--accent-blue);">Click to jump to line in Monaco Editor</div>
     `;
     this.tooltip.style.display = 'block';
@@ -1034,12 +1035,13 @@ class DiagramRenderer {
    */
   showTooltip(event, d) {
     if (!this.tooltip) return;
+    const esc = typeof escapeHtml === 'function' ? escapeHtml : str => str;
     this.tooltip.innerHTML = `
-      <div class="tooltip-title">${d.name}</div>
-      <div class="tooltip-row"><span>Path:</span> <code>${d.relativePath}</code></div>
-      <div class="tooltip-row"><span>Role:</span> <strong>${d.role}</strong></div>
-      <div class="tooltip-row"><span>Lines:</span> <span>${d.lines || 'N/A'}</span></div>
-      <div class="tooltip-row"><span>Dependencies:</span> <span>${d.outDegree} out, ${d.inDegree} in</span></div>
+      <div class="tooltip-title">${esc(d.name)}</div>
+      <div class="tooltip-row"><span>Path:</span> <code>${esc(d.relativePath)}</code></div>
+      <div class="tooltip-row"><span>Role:</span> <strong>${esc(d.role)}</strong></div>
+      <div class="tooltip-row"><span>Lines:</span> <span>${esc(d.lines || 'N/A')}</span></div>
+      <div class="tooltip-row"><span>Dependencies:</span> <span>${esc(d.outDegree)} out, ${esc(d.inDegree)} in</span></div>
     `;
     this.tooltip.style.display = 'block';
 

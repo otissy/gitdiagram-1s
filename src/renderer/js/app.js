@@ -260,11 +260,13 @@ class App {
       const item = document.createElement('div');
       item.className = 'quick-search-item';
       item.style.cssText = 'padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 4px; color: var(--text-secondary); font-size: 12px;';
+      const safeName = typeof escapeHtml === 'function' ? escapeHtml(f.name) : f.name;
+      const safeRelPath = typeof escapeHtml === 'function' ? escapeHtml(f.relativePath) : f.relativePath;
       item.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>📄</span>
-          <span style="color: var(--text-primary); font-weight: 500;">${f.name}</span>
-          <span style="color: var(--text-muted); font-size: 11px;">${f.relativePath}</span>
+          <span style="color: var(--text-primary); font-weight: 500;">${safeName}</span>
+          <span style="color: var(--text-muted); font-size: 11px;">${safeRelPath}</span>
         </div>
         <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);">${f.lines ? f.lines + 'L' : ''}</span>
       `;
@@ -328,10 +330,12 @@ class App {
     for (const folder of recents) {
       const item = document.createElement('div');
       item.className = 'recent-item';
-      const name = folder.split(/[\\/]/).pop();
+      const rawName = folder.split(/[\\/]/).pop();
+      const safeName = typeof escapeHtml === 'function' ? escapeHtml(rawName) : rawName;
+      const safeFolder = typeof escapeHtml === 'function' ? escapeHtml(folder) : folder;
       item.innerHTML = `
-        <span style="font-weight: 500; color: var(--text-primary);">${name}</span>
-        <span style="font-size: 10px; color: var(--text-muted);">${folder}</span>
+        <span style="font-weight: 500; color: var(--text-primary);">${safeName}</span>
+        <span style="font-size: 10px; color: var(--text-muted);">${safeFolder}</span>
       `;
       item.onclick = () => this.openRepository(folder);
       this.recentsList.appendChild(item);
@@ -571,9 +575,10 @@ class App {
       myReposList.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 12px;">Loading repositories from GitHub...</div>';
       const res = await window.api.github.getUserRepos();
       if (!res.success) {
+        const safeError = typeof escapeHtml === 'function' ? escapeHtml(res.error) : res.error;
         myReposList.innerHTML = `
           <div style="padding: 14px; text-align: center; color: var(--text-secondary); font-size: 12px;">
-            <p>${res.error}</p>
+            <p>${safeError}</p>
             <button id="btn-goto-auth" class="btn-primary" style="margin-top: 10px; font-size: 11px;">Enter GitHub Token</button>
           </div>
         `;

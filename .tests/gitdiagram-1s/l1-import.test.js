@@ -38,3 +38,15 @@ test('L1: package.json is valid and points to main', () => {
   assert.equal(pkg.name, 'gitdiagram-1s');
   assert.equal(pkg.main, 'src/main/main.js');
 });
+
+test('L1: securityService and securityUtils load without error', () => {
+  const sec = require('../../src/main/services/securityService');
+  assert.equal(typeof sec.sanitizePathArg, 'function');
+  assert.equal(typeof sec.isValidBranchName, 'function');
+  assert.equal(typeof sec.isValidSlugPart, 'function');
+  assert.equal(typeof sec.escapeHtml, 'function');
+  assert.ok(Array.isArray(sec.GIT_SECURITY_ARGS));
+
+  const rendererSec = require('../../src/renderer/js/securityUtils');
+  assert.equal(typeof rendererSec.escapeHtml, 'function');
+});

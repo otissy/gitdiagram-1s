@@ -42,7 +42,8 @@ class OutlineController {
       this.currentCalls = res.calls || [];
       this.render();
     } catch (err) {
-      this.container.innerHTML = `<div style="padding: 12px; color: var(--accent-red); font-size: 12px;">Failed to extract symbols: ${err.message}</div>`;
+      const safeErr = typeof escapeHtml === 'function' ? escapeHtml(err.message) : err.message;
+      this.container.innerHTML = `<div style="padding: 12px; color: var(--accent-red); font-size: 12px;">Failed to extract symbols: ${safeErr}</div>`;
     }
   }
 
@@ -69,12 +70,14 @@ class OutlineController {
     if (!this.container) return;
     this.container.innerHTML = '';
 
+    const safeRelativePath = typeof escapeHtml === 'function' ? escapeHtml(this.currentRelativePath || 'No file selected') : (this.currentRelativePath || 'No file selected');
+
     if (!this.currentSymbols || this.currentSymbols.length === 0) {
       this.container.innerHTML = `
         <div class="outline-container">
           <div class="outline-file-header">
             <span>📄</span>
-            <span>${this.currentRelativePath || 'No file selected'}</span>
+            <span>${safeRelativePath}</span>
           </div>
           <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 12px;">
             No symbols (classes, functions, variables) found in this file.
@@ -97,7 +100,7 @@ class OutlineController {
     header.className = 'outline-file-header';
     header.innerHTML = `
       <span>📄</span>
-      <span style="font-weight: 600; color: var(--text-primary);">${this.currentRelativePath}</span>
+      <span style="font-weight: 600; color: var(--text-primary);">${safeRelativePath}</span>
       <span style="font-size: 10px; color: var(--text-muted); margin-left: auto;">${totalCount} symbols</span>
     `;
     wrap.appendChild(header);

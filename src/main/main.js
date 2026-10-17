@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -12,6 +12,8 @@ let githubRemoteService = null;
 let mainWindow = null;
 let currentWatcher = null;
 const recentsFilePath = path.join(app.getPath('userData'), 'recent-repos.json');
+
+const { sanitizePathArg, isValidBranchName } = require('./services/securityService');
 
 // Helper to load recent repositories
 function loadRecentRepos() {
@@ -29,9 +31,10 @@ function loadRecentRepos() {
 // Helper to save recent repositories
 function saveRecentRepo(folderPath) {
   try {
+    const safePath = sanitizePathArg(folderPath);
     let recents = loadRecentRepos();
-    recents = recents.filter(p => p !== folderPath);
-    recents.unshift(folderPath);
+    recents = recents.filter(p => p !== safePath);
+    recents.unshift(safePath);
     if (recents.length > 15) recents = recents.slice(0, 15);
     fs.writeFileSync(recentsFilePath, JSON.stringify(recents, null, 2), 'utf8');
     return recents;
@@ -54,25 +57,43 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      nodeIntegrationInWorker: false,
+      nodeIntegrationInSubFrames: false,
       sandbox: false,
-      webSecurity: true
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      navigateOnDragDrop: false
     }
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  // Security Hardening: Prevent navigation away from the local app
+  // Security Hardening: Prevent navigation away from our local index.html
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    if (!navigationUrl.startsWith('file://')) {
+    try {
+      const parsed = new URL(navigationUrl);
+      if (parsed.protocol !== 'file:' || !parsed.pathname.replace(/\\/g, '/').endsWith('index.html')) {
+        event.preventDefault();
+      }
+    } catch (e) {
       event.preventDefault();
     }
   });
 
-  // Security Hardening: Block new window popups / untrusted webviews
+  // Security Hardening: Block untrusted webviews from being attached
+  mainWindow.webContents.on('will-attach-webview', (event) => {
+    event.preventDefault();
+  });
+
+  // Security Hardening: Block new window popups / untrusted webviews, strictly allow verified GitHub HTTPS links in OS browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https:') || url.startsWith('http:')) {
-      require('electron').shell.openExternal(url);
-    }
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === 'https:' && (parsed.hostname === 'github.com' || parsed.hostname.endsWith('.github.com'))) {
+        require('electron').shell.openExternal(url);
+      }
+    } catch (e) {}
     return { action: 'deny' };
   });
 
@@ -145,48 +166,63 @@ function registerIpcHandlers() {
 
   // Repository: Scan
   ipcMain.handle('repo:scan', async (event, folderPath) => {
-    setupFolderWatcher(folderPath);
-    return await fileService.scanDirectory(folderPath);
+    const safePath = sanitizePathArg(folderPath);
+    setupFolderWatcher(safePath);
+    return await fileService.scanDirectory(safePath);
   });
 
   // File: Read
   ipcMain.handle('file:read', async (event, filePath) => {
-    return await fileService.readFile(filePath);
+    const safePath = sanitizePathArg(filePath);
+    return await fileService.readFile(safePath);
   });
 
   // File: Save
   ipcMain.handle('file:save', async (event, filePath, content) => {
-    return await fileService.saveFile(filePath, content);
+    const safePath = sanitizePathArg(filePath);
+    return await fileService.saveFile(safePath, content);
   });
 
   // Git Services
   ipcMain.handle('git:isRepo', async (event, folderPath) => {
-    return await gitService.isGitRepo(folderPath);
+    const safePath = sanitizePathArg(folderPath);
+    return await gitService.isGitRepo(safePath);
   });
 
   ipcMain.handle('git:getStatus', async (event, folderPath) => {
-    return await gitService.getGitStatus(folderPath);
+    const safePath = sanitizePathArg(folderPath);
+    return await gitService.getGitStatus(safePath);
   });
 
   ipcMain.handle('git:getBranches', async (event, folderPath) => {
-    return await gitService.getGitBranches(folderPath);
+    const safePath = sanitizePathArg(folderPath);
+    return await gitService.getGitBranches(safePath);
   });
 
   ipcMain.handle('git:switchBranch', async (event, folderPath, branch) => {
-    return await gitService.switchBranch(folderPath, branch);
+    const safePath = sanitizePathArg(folderPath);
+    if (!isValidBranchName(branch)) {
+      return { success: false, error: 'Security: Invalid branch name' };
+    }
+    return await gitService.switchBranch(safePath, branch.trim());
   });
 
   ipcMain.handle('git:getLog', async (event, folderPath, maxCount) => {
-    return await gitService.getGitLog(folderPath, maxCount);
+    const safePath = sanitizePathArg(folderPath);
+    const limit = Math.max(1, Math.min(parseInt(maxCount, 10) || 50, 500));
+    return await gitService.getGitLog(safePath, limit);
   });
 
   ipcMain.handle('git:getDiff', async (event, folderPath, filePath, commitA, commitB) => {
-    return await gitService.getGitDiff(folderPath, filePath, commitA, commitB);
+    const safePath = sanitizePathArg(folderPath);
+    const safeFile = filePath ? sanitizePathArg(filePath) : null;
+    return await gitService.getGitDiff(safePath, safeFile, commitA, commitB);
   });
 
   // Diagram Services
   ipcMain.handle('diagram:generate', async (event, folderPath, files, options) => {
-    return await diagramService.generateDiagram(folderPath, files, options);
+    const safePath = sanitizePathArg(folderPath);
+    return await diagramService.generateDiagram(safePath, files, options);
   });
 
   ipcMain.handle('diagram:toMermaid', (event, diagramData) => {
@@ -194,11 +230,14 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('diagram:generateSymbols', async (event, folderPath, targetFile, files) => {
-    return await diagramService.generateSymbolGraph(folderPath, targetFile, files);
+    const safePath = sanitizePathArg(folderPath);
+    const safeTarget = targetFile ? sanitizePathArg(targetFile) : null;
+    return await diagramService.generateSymbolGraph(safePath, safeTarget, files);
   });
 
   ipcMain.handle('file:getSymbols', async (event, filePath) => {
-    return await symbolService.extractFileSymbols(filePath);
+    const safePath = sanitizePathArg(filePath);
+    return await symbolService.extractFileSymbols(safePath);
   });
 
   // Export File
@@ -288,6 +327,23 @@ function registerIpcHandlers() {
 
 // App lifecycle
 app.whenReady().then(() => {
+  // Security Hardening: Enforce strict Content-Security-Policy across all sessions
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';"
+        ]
+      }
+    });
+  });
+
+  // Security Hardening: Deny all sensitive permission requests
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(false);
+  });
+
   githubRemoteService = new GitHubRemoteService(app.getPath('userData'));
   registerIpcHandlers();
   createWindow();

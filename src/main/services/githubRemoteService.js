@@ -2,6 +2,7 @@ const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
+const { isValidSlugPart, GIT_SECURITY_ARGS, GIT_SAFE_ENV } = require('./securityService');
 
 // Parse repo input like "facebook/react", "https://github.com/owner/repo", "git@github.com:owner/repo.git"
 function parseRepoIdentifier(input) {
@@ -13,19 +14,19 @@ function parseRepoIdentifier(input) {
 
   // https://github.com/owner/repo
   const httpMatch = str.match(/https?:\/\/[^\/]+\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/);
-  if (httpMatch) {
+  if (httpMatch && isValidSlugPart(httpMatch[1]) && isValidSlugPart(httpMatch[2])) {
     return { owner: httpMatch[1], repo: httpMatch[2], fullName: `${httpMatch[1]}/${httpMatch[2]}` };
   }
 
   // git@github.com:owner/repo
   const sshMatch = str.match(/git@[^:]+:([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/);
-  if (sshMatch) {
+  if (sshMatch && isValidSlugPart(sshMatch[1]) && isValidSlugPart(sshMatch[2])) {
     return { owner: sshMatch[1], repo: sshMatch[2], fullName: `${sshMatch[1]}/${sshMatch[2]}` };
   }
 
   // owner/repo
   const slugMatch = str.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/);
-  if (slugMatch) {
+  if (slugMatch && isValidSlugPart(slugMatch[1]) && isValidSlugPart(slugMatch[2])) {
     return { owner: slugMatch[1], repo: slugMatch[2], fullName: `${slugMatch[1]}/${slugMatch[2]}` };
   }
 
@@ -201,7 +202,10 @@ class GitHubRemoteService {
 
       const cloneRes = await this.runGitCommand(this.cacheDir, [
         'clone',
+        '--config', 'core.hooksPath=',
+        '--config', 'core.fsmonitor=',
         '--depth=50',
+        '--',
         cloneUrl,
         safeFolderName
       ]);
@@ -225,14 +229,16 @@ class GitHubRemoteService {
     }
   }
 
-  // Safe git execution
+  // Safe git execution with security flags to prevent execution of untrusted hooks/scripts
   runGitCommand(cwd, args) {
+    const fullArgs = [...GIT_SECURITY_ARGS, ...args];
+
     return new Promise((resolve) => {
-      execFile('git', args, {
+      execFile('git', fullArgs, {
         cwd,
         maxBuffer: 20 * 1024 * 1024,
         encoding: 'utf8',
-        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+        env: GIT_SAFE_ENV
       }, (error, stdout, stderr) => {
         if (error) {
           resolve({ success: false, error: stderr || error.message, stdout });
