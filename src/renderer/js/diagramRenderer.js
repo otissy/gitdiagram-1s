@@ -332,11 +332,17 @@ class DiagramRenderer {
     const nodeMap = new Map(filteredNodes.map(n => [n.id, n]));
 
     // Compute incoming count for each target in the active graph
+    // Compute incoming count for each target in the active graph
     const targetInCounts = new Map();
+    const targetIncomingLists = new Map();
     for (const l of filteredLinks) {
       const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
       targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+      if (!targetIncomingLists.has(tgtId)) targetIncomingLists.set(tgtId, []);
+      targetIncomingLists.get(tgtId).push(l);
     }
+
+    const targetSlotCounters = new Map();
 
     const linkPaths = linkG.selectAll('.diagram-link')
       .data(filteredLinks)
@@ -352,18 +358,32 @@ class DiagramRenderer {
         return `diagram-link ${weight.tierClass}`;
       })
       .style('--link-width', d => `${d._weight.width}px`)
+      .style('stroke-width', d => `${d._weight.width}px`)
+      .style('stroke', d => d._weight.stroke)
+      .attr('stroke-width', d => d._weight.width)
       .attr('marker-end', d => `url(#${d._weight.markerId})`)
       .attr('d', d => {
         const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
         const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
         if (!src || !tgt) return '';
 
+        const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+        const totalIncoming = (targetIncomingLists.get(tgtId) || []).length;
+        const slotIdx = targetSlotCounters.get(tgtId) || 0;
+        targetSlotCounters.set(tgtId, slotIdx + 1);
+
+        // Distribute entry slots along target height:
+        const verticalSpread = Math.min(18, tgt.height * 0.65);
+        const slotOffset = totalIncoming > 1
+          ? ((slotIdx / (totalIncoming - 1)) - 0.5) * verticalSpread
+          : 0;
+
         // Left-to-right connection
         if (src.x + src.width <= tgt.x) {
           const x1 = src.x + src.width;
           const y1 = src.y + src.height / 2;
           const x2 = tgt.x;
-          const y2 = tgt.y + tgt.height / 2;
+          const y2 = tgt.y + tgt.height / 2 + slotOffset;
           const dx = Math.max(30, (x2 - x1) * 0.45);
           return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
         }
@@ -373,7 +393,7 @@ class DiagramRenderer {
           const x1 = src.x;
           const y1 = src.y + src.height / 2;
           const x2 = tgt.x + tgt.width;
-          const y2 = tgt.y + tgt.height / 2;
+          const y2 = tgt.y + tgt.height / 2 + slotOffset;
           const dx = Math.max(40, (x1 - x2) * 0.35);
           const dy = (y2 - y1) * 0.25;
           return `M ${x1} ${y1} C ${x1 - dx} ${y1 - dy}, ${x2 + dx} ${y2 + dy}, ${x2} ${y2}`;
@@ -383,7 +403,7 @@ class DiagramRenderer {
         const x1 = src.x + src.width;
         const y1 = src.y + src.height / 2;
         const x2 = tgt.x + tgt.width;
-        const y2 = tgt.y + tgt.height / 2;
+        const y2 = tgt.y + tgt.height / 2 + slotOffset;
         const arcX = Math.max(x1, x2) + 25;
         return `M ${x1} ${y1} C ${arcX} ${y1}, ${arcX} ${y2}, ${x2} ${y2}`;
       })
@@ -495,12 +515,17 @@ class DiagramRenderer {
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
     const nodeMap = new Map(filteredNodes.map(n => [n.id, n]));
 
-    // Compute incoming count for each target in the active graph
+    // Compute incoming count and lists for each target in the active graph
     const targetInCounts = new Map();
+    const targetIncomingLists = new Map();
     for (const l of filteredLinks) {
       const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
       targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+      if (!targetIncomingLists.has(tgtId)) targetIncomingLists.set(tgtId, []);
+      targetIncomingLists.get(tgtId).push(l);
     }
+
+    const targetSlotCounters = new Map();
 
     const linkPaths = linkG.selectAll('.diagram-link')
       .data(filteredLinks)
@@ -516,16 +541,30 @@ class DiagramRenderer {
         return `diagram-link ${weight.tierClass}`;
       })
       .style('--link-width', d => `${d._weight.width}px`)
+      .style('stroke-width', d => `${d._weight.width}px`)
+      .style('stroke', d => d._weight.stroke)
+      .attr('stroke-width', d => d._weight.width)
       .attr('marker-end', d => `url(#${d._weight.markerId})`)
       .attr('d', d => {
         const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
         const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
         if (!src || !tgt) return '';
 
+        const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+        const totalIncoming = (targetIncomingLists.get(tgtId) || []).length;
+        const slotIdx = targetSlotCounters.get(tgtId) || 0;
+        targetSlotCounters.set(tgtId, slotIdx + 1);
+
+        const verticalSpread = Math.min(18, tgt.height * 0.65);
+        const slotOffset = totalIncoming > 1
+          ? ((slotIdx / (totalIncoming - 1)) - 0.5) * verticalSpread
+          : 0;
+        d._slotOffset = slotOffset;
+
         const x1 = src.x + src.width;
         const y1 = src.y + src.height / 2;
         const x2 = tgt.x;
-        const y2 = tgt.y + tgt.height / 2;
+        const y2 = tgt.y + tgt.height / 2 + slotOffset;
 
         if (x1 <= x2) {
           const dx = Math.max(25, (x2 - x1) * 0.45);
@@ -578,7 +617,7 @@ class DiagramRenderer {
           const x1 = src.x + src.width;
           const y1 = src.y + src.height / 2;
           const x2 = tgt.x;
-          const y2 = tgt.y + tgt.height / 2;
+          const y2 = tgt.y + tgt.height / 2 + (l._slotOffset || 0);
           const dx = Math.max(25, Math.abs(x2 - x1) * 0.45);
           return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
         });
@@ -1079,15 +1118,40 @@ class DiagramRenderer {
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
+    // Compute incoming count and arrival slots for symbols
+    const targetInCounts = new Map();
+    const targetIncomingLists = new Map();
+    for (const l of activeLinks) {
+      const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+      targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+      if (!targetIncomingLists.has(tgtId)) targetIncomingLists.set(tgtId, []);
+      targetIncomingLists.get(tgtId).push(l);
+    }
+
+    const targetSlotCounters = new Map();
+    for (const l of activeLinks) {
+      const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+      const tgtNode = nodeMap.get(tgtId);
+      const totalIncoming = (targetIncomingLists.get(tgtId) || []).length;
+      const slotIdx = targetSlotCounters.get(tgtId) || 0;
+      targetSlotCounters.set(tgtId, slotIdx + 1);
+
+      const verticalSpread = tgtNode ? Math.min(18, tgtNode.height * 0.65) : 12;
+      l._slotOffset = totalIncoming > 1
+        ? ((slotIdx / (totalIncoming - 1)) - 0.5) * verticalSpread
+        : 0;
+    }
+
     const computeCurvePath = (d) => {
       const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
       const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
       if (!src || !tgt) return '';
 
+      const slotOffset = d._slotOffset || 0;
       const x1 = src.x + src.width;
       const y1 = src.y + src.height / 2;
       const x2 = tgt.x;
-      const y2 = tgt.y + tgt.height / 2;
+      const y2 = tgt.y + tgt.height / 2 + slotOffset;
 
       if (src.x + src.width <= tgt.x) {
         const dx = Math.max(25, (tgt.x - (src.x + src.width)) * 0.45);
@@ -1100,13 +1164,6 @@ class DiagramRenderer {
         return `M ${x1} ${y1} C ${arcX} ${y1}, ${arcX} ${y2}, ${tgt.x + tgt.width} ${y2}`;
       }
     };
-
-    // Compute incoming count for symbols
-    const targetInCounts = new Map();
-    for (const l of activeLinks) {
-      const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
-      targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
-    }
 
     // Links layer
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
@@ -1123,11 +1180,16 @@ class DiagramRenderer {
         return `diagram-link type-${d.type} ${d.type === 'contains' ? 'tier-normal' : weight.tierClass}`;
       })
       .style('--link-width', d => d.type === 'contains' ? '1.2px' : `${d._weight.width}px`)
-      .attr('stroke', d => d.type === 'contains' ? '#a371f7' : d.type === 'inherits' ? '#3fb950' : '#58a6ff')
+      .style('stroke-width', d => d.type === 'contains' ? '1.2px' : `${d._weight.width}px`)
+      .style('stroke', d => d.type === 'contains' ? '#a371f7' : d.type === 'inherits' ? '#3fb950' : d._weight.stroke)
+      .attr('stroke-width', d => d.type === 'contains' ? 1.2 : d._weight.width)
+      .attr('stroke', d => d.type === 'contains' ? '#a371f7' : d.type === 'inherits' ? '#3fb950' : d._weight.stroke)
       .attr('stroke-dasharray', d => d.type === 'contains' ? '4 3' : null)
       .attr('marker-end', d => {
         if (d.type === 'calls') {
-          return d._weight.isThick ? 'url(#arrow-call-thick)' : 'url(#arrow-call)';
+          if (d._inCount >= 4) return 'url(#arrow-call-thick)';
+          if (d._inCount >= 2) return 'url(#arrow-call-medium)';
+          return 'url(#arrow-call)';
         }
         return d.type === 'inherits' ? 'url(#arrow-inherit)' : null;
       })
@@ -1329,40 +1391,45 @@ class DiagramRenderer {
   getLinkWeight(inCount) {
     if (inCount <= 1) {
       return {
-        width: 1.4,
+        width: 1.6,
         tierClass: 'tier-normal',
         markerId: 'arrow-import',
-        isThick: false
+        isThick: false,
+        stroke: 'rgba(240, 246, 252, 0.22)'
       };
     } else if (inCount === 2) {
       return {
-        width: 2.4,
+        width: 4.5,
         tierClass: 'tier-medium',
         markerId: 'arrow-import-medium',
-        isThick: true
+        isThick: true,
+        stroke: 'rgba(88, 166, 255, 0.75)'
       };
     } else if (inCount === 3) {
       return {
-        width: 3.4,
+        width: 7.5,
         tierClass: 'tier-high',
-        markerId: 'arrow-import-medium',
-        isThick: true
+        markerId: 'arrow-import-high',
+        isThick: true,
+        stroke: '#58a6ff'
       };
     } else if (inCount === 4) {
       return {
-        width: 4.6,
+        width: 10.5,
         tierClass: 'tier-very-high',
         markerId: 'arrow-import-thick',
-        isThick: true
+        isThick: true,
+        stroke: '#388bfd'
       };
     } else {
       // 5+ files going to this target: major architectural highway
-      const dynamicWidth = Math.min(7.0, 4.6 + (inCount - 5) * 0.4);
+      const dynamicWidth = Math.min(16.0, 10.5 + (inCount - 4) * 1.5);
       return {
         width: dynamicWidth,
         tierClass: 'tier-highway',
-        markerId: 'arrow-import-thick',
-        isThick: true
+        markerId: 'arrow-import-highway',
+        isThick: true,
+        stroke: '#1f6feb'
       };
     }
   }

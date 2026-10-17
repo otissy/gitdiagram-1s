@@ -121,6 +121,16 @@ By default, Vision IDE runs in **Lightweight Viewer Mode** (<75MB RAM idle, inst
    - Distributed under the MIT License (`LICENSE`).
    - `electron-builder` is configured exclusively for Windows Setup EXE (`nsis`) and Standalone portable executable (`portable`).
 
+7. **Dynamic Traffic Line Thickness & Parallel Entry Routing:**
+   - Lines leading into high-traffic target files scale dynamically based on the target file's in-degree (incoming dependencies):
+     - 1 incoming: `1.6px` (normal subtle tier)
+     - 2 incoming: `4.5px` (medium traffic tier, glowing blue)
+     - 3 incoming: `7.5px` (high traffic tier)
+     - 4 incoming: `10.5px` (very high traffic tier)
+     - 5+ incoming: `14.0px - 16.0px` (architectural highway tier)
+   - Multi-lane parallel entry slot offsets (`slotOffset`): multiple incoming connections into the same file node are distributed evenly along the card's vertical height instead of overlapping at a single point, creating clean parallel cable buses.
+   - SVG markers scale proportionally with userSpaceOnUse so arrowheads never pull away or get swallowed.
+
 ## Known problems
 
 None.

@@ -292,37 +292,39 @@
   transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
 }
 
-/* Weight tiers based on incoming volume to target file */
+/* Weight tiers based on incoming volume to target file - Dramatic visual contrast */
 .diagram-link.tier-normal {
-  --link-width: 1.4px;
+  --link-width: 1.6px;
   --link-stroke: rgba(240, 246, 252, 0.2);
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .diagram-link.tier-medium {
-  --link-width: 2.4px;
-  --link-stroke: rgba(88, 166, 255, 0.45);
-  opacity: 0.92;
+  --link-width: 4.5px;
+  --link-stroke: rgba(88, 166, 255, 0.7);
+  opacity: 0.95;
+  filter: drop-shadow(0 0 3px rgba(88, 166, 255, 0.45));
 }
 
 .diagram-link.tier-high {
-  --link-width: 3.4px;
-  --link-stroke: rgba(88, 166, 255, 0.65);
-  opacity: 0.98;
+  --link-width: 7.5px;
+  --link-stroke: #58a6ff;
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(88, 166, 255, 0.7));
 }
 
 .diagram-link.tier-very-high {
-  --link-width: 4.6px;
-  --link-stroke: rgba(88, 166, 255, 0.82);
-  filter: drop-shadow(0 0 2px rgba(88, 166, 255, 0.4));
+  --link-width: 10.5px;
+  --link-stroke: #388bfd;
   opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(88, 166, 255, 0.85));
 }
 
 .diagram-link.tier-highway {
-  --link-width: 6.0px;
-  --link-stroke: #58a6ff;
-  filter: drop-shadow(0 0 5px rgba(88, 166, 255, 0.65));
+  --link-width: 14.0px;
+  --link-stroke: #1f6feb;
   opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.95));
 }
 
 .diagram-link.highlighted {

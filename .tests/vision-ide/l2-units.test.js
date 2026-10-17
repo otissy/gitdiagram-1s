@@ -599,21 +599,26 @@ test('L2: diagramService toMermaid generates thick arrows for high in-degree tar
 
 test('L2: link weight tier calculation scales thickness with incoming dependencies', () => {
   const getLinkWeight = (inCount) => {
-    if (inCount <= 1) return { width: 1.4, tierClass: 'tier-normal', isThick: false };
-    if (inCount === 2) return { width: 2.4, tierClass: 'tier-medium', isThick: true };
-    if (inCount === 3) return { width: 3.4, tierClass: 'tier-high', isThick: true };
-    if (inCount === 4) return { width: 4.6, tierClass: 'tier-very-high', isThick: true };
-    const dynamicWidth = Math.min(7.0, 4.6 + (inCount - 5) * 0.4);
+    if (inCount <= 1) return { width: 1.6, tierClass: 'tier-normal', isThick: false };
+    if (inCount === 2) return { width: 4.5, tierClass: 'tier-medium', isThick: true };
+    if (inCount === 3) return { width: 7.5, tierClass: 'tier-high', isThick: true };
+    if (inCount === 4) return { width: 10.5, tierClass: 'tier-very-high', isThick: true };
+    const dynamicWidth = Math.min(16.0, 10.5 + (inCount - 4) * 1.5);
     return { width: dynamicWidth, tierClass: 'tier-highway', isThick: true };
   };
 
   assert.equal(getLinkWeight(1).tierClass, 'tier-normal');
   assert.equal(getLinkWeight(1).isThick, false);
+  assert.equal(getLinkWeight(1).width, 1.6);
   assert.equal(getLinkWeight(2).tierClass, 'tier-medium');
+  assert.equal(getLinkWeight(2).width, 4.5);
   assert.equal(getLinkWeight(3).tierClass, 'tier-high');
+  assert.equal(getLinkWeight(3).width, 7.5);
   assert.equal(getLinkWeight(4).tierClass, 'tier-very-high');
+  assert.equal(getLinkWeight(4).width, 10.5);
   assert.equal(getLinkWeight(5).tierClass, 'tier-highway');
-  assert.equal(getLinkWeight(10).width, 6.6);
+  assert.equal(getLinkWeight(5).width, 12.0);
+  assert.equal(getLinkWeight(10).width, 16.0);
   assert.ok(getLinkWeight(10).width > getLinkWeight(2).width);
 });
 
