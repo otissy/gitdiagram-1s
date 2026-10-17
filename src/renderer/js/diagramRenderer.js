@@ -1393,7 +1393,7 @@ class DiagramRenderer {
   getLinkWeight(inCount) {
     if (inCount <= 1) {
       return {
-        width: 1.6,
+        width: 1.2,
         tierClass: 'tier-normal',
         markerId: 'arrow-import',
         isThick: false,
@@ -1401,15 +1401,15 @@ class DiagramRenderer {
       };
     } else if (inCount === 2) {
       return {
-        width: 4.5,
+        width: 1.9,
         tierClass: 'tier-medium',
         markerId: 'arrow-import-medium',
         isThick: true,
-        stroke: 'rgba(88, 166, 255, 0.75)'
+        stroke: 'rgba(88, 166, 255, 0.65)'
       };
     } else if (inCount === 3) {
       return {
-        width: 7.5,
+        width: 2.6,
         tierClass: 'tier-high',
         markerId: 'arrow-import-high',
         isThick: true,
@@ -1417,15 +1417,15 @@ class DiagramRenderer {
       };
     } else if (inCount === 4) {
       return {
-        width: 10.5,
+        width: 3.3,
         tierClass: 'tier-very-high',
         markerId: 'arrow-import-thick',
         isThick: true,
         stroke: '#388bfd'
       };
     } else {
-      // 5+ files going to this target: major architectural highway
-      const dynamicWidth = Math.min(16.0, 10.5 + (inCount - 4) * 1.5);
+      // 5+ files going to this target: sleek, crisp highway
+      const dynamicWidth = Math.min(4.2, 3.3 + (inCount - 4) * 0.25);
       return {
         width: dynamicWidth,
         tierClass: 'tier-highway',
@@ -1457,8 +1457,8 @@ class DiagramRenderer {
         <div class="legend-item"><span class="legend-dot" style="background: #ffa657;"></span><span>Variable</span></div>
         <div class="legend-item"><span class="legend-dot" style="background: #f778ba;"></span><span>Interface</span></div>
         <div class="legend-item" style="border-left: 1px solid var(--border-color); padding-left: 8px; display: flex; align-items: center; gap: 5px;" title="Thicker call lines indicate higher call frequency">
-          <span style="display: inline-block; width: 12px; height: 1.5px; background: rgba(240, 246, 252, 0.4); border-radius: 1px;"></span>
-          <span style="display: inline-block; width: 14px; height: 3.8px; background: #39c5bb; border-radius: 2px;"></span>
+          <span style="display: inline-block; width: 12px; height: 1.2px; background: rgba(240, 246, 252, 0.4); border-radius: 1px;"></span>
+          <span style="display: inline-block; width: 14px; height: 2.8px; background: #39c5bb; border-radius: 1px;"></span>
           <span style="font-size: 10px; color: var(--text-muted);">Thickness: Call Volume</span>
         </div>
       `;
@@ -1470,8 +1470,8 @@ class DiagramRenderer {
         <div class="legend-item"><span class="legend-dot" style="background: #58a6ff;"></span><span>TypeScript/JS</span></div>
         <div class="legend-item"><span class="legend-dot" style="background: #3fb950;"></span><span>Python/Go/Rust</span></div>
         <div class="legend-item" style="border-left: 1px solid var(--border-color); padding-left: 8px; display: flex; align-items: center; gap: 5px;" title="Lines become thicker when more files import the target">
-          <span style="display: inline-block; width: 12px; height: 1.5px; background: rgba(240, 246, 252, 0.4); border-radius: 1px;"></span>
-          <span style="display: inline-block; width: 14px; height: 4px; background: #58a6ff; border-radius: 2px;"></span>
+          <span style="display: inline-block; width: 12px; height: 1.2px; background: rgba(240, 246, 252, 0.4); border-radius: 1px;"></span>
+          <span style="display: inline-block; width: 14px; height: 3.2px; background: #58a6ff; border-radius: 1.5px;"></span>
           <span style="font-size: 10px; color: var(--text-muted);">Thickness: Inflow Traffic</span>
         </div>
       `;

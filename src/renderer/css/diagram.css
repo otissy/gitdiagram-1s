@@ -285,59 +285,55 @@
 .diagram-link {
   fill: none;
   stroke: var(--link-stroke, rgba(240, 246, 252, 0.22));
-  stroke-width: var(--link-width, 1.5px);
+  stroke-width: var(--link-width, 1.2px);
   stroke-linecap: round;
   pointer-events: stroke;
   cursor: pointer;
-  transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease, opacity 0.15s ease;
 }
 
-/* Weight tiers based on incoming volume to target file - Dramatic visual contrast */
+/* Weight tiers based on incoming volume to target file - Crisp & Sleek */
 .diagram-link.tier-normal {
-  --link-width: 1.6px;
-  --link-stroke: rgba(240, 246, 252, 0.2);
-  opacity: 0.8;
+  --link-width: 1.2px;
+  --link-stroke: rgba(240, 246, 252, 0.22);
+  opacity: 0.75;
 }
 
 .diagram-link.tier-medium {
-  --link-width: 4.5px;
-  --link-stroke: rgba(88, 166, 255, 0.7);
-  opacity: 0.95;
-  filter: drop-shadow(0 0 3px rgba(88, 166, 255, 0.45));
+  --link-width: 1.9px;
+  --link-stroke: rgba(88, 166, 255, 0.65);
+  opacity: 0.9;
 }
 
 .diagram-link.tier-high {
-  --link-width: 7.5px;
+  --link-width: 2.6px;
   --link-stroke: #58a6ff;
-  opacity: 1;
-  filter: drop-shadow(0 0 5px rgba(88, 166, 255, 0.7));
+  opacity: 0.95;
 }
 
 .diagram-link.tier-very-high {
-  --link-width: 10.5px;
+  --link-width: 3.3px;
   --link-stroke: #388bfd;
   opacity: 1;
-  filter: drop-shadow(0 0 8px rgba(88, 166, 255, 0.85));
 }
 
 .diagram-link.tier-highway {
-  --link-width: 14.0px;
+  --link-width: 4.0px;
   --link-stroke: #1f6feb;
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.95));
 }
 
 .diagram-link.highlighted {
   stroke: var(--accent-blue) !important;
-  stroke-width: calc(var(--link-width, 1.5px) + 2px) !important;
-  filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.9)) !important;
+  stroke-width: calc(var(--link-width, 1.2px) + 1.2px) !important;
+  filter: drop-shadow(0 0 3px rgba(88, 166, 255, 0.65)) !important;
   opacity: 1 !important;
 }
 
 .diagram-link.incoming {
   stroke: var(--accent-green) !important;
-  stroke-width: calc(var(--link-width, 1.5px) + 1.8px) !important;
-  filter: drop-shadow(0 0 5px rgba(63, 185, 80, 0.7)) !important;
+  stroke-width: calc(var(--link-width, 1.2px) + 1.2px) !important;
+  filter: drop-shadow(0 0 3px rgba(63, 185, 80, 0.55)) !important;
   opacity: 1 !important;
 }
 
