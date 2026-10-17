@@ -60,6 +60,7 @@ class FileExplorer {
 
   buildTreeNode(node, parentElement, depth = 0) {
     if (!node) return;
+    if (node.type === 'directory' && depth > 0 && node.name && node.name.startsWith('.')) return;
 
     if (node.type === 'directory') {
       const isExpanded = this.expandedFolders.has(node.relativePath);

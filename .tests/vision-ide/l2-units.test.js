@@ -30,12 +30,23 @@ test('L2: fileService binary detection identifies media and binaries', () => {
   assert.equal(fileService.isBinaryFile('sample.dat', binBuf), true);
 });
 
-test('L2: fileService shouldIgnore blocks default unwanted directories', () => {
+test('L2: fileService shouldIgnore blocks default unwanted directories and all foldernames starting with dot', () => {
   assert.equal(fileService.shouldIgnore('node_modules', 'node_modules'), true);
   assert.equal(fileService.shouldIgnore('.git', '.git'), true);
   assert.equal(fileService.shouldIgnore('dist', 'dist'), true);
   assert.equal(fileService.shouldIgnore('src', 'src'), false);
   assert.equal(fileService.shouldIgnore('file.js', 'src/file.js'), false);
+  // Foldernames starting with '.' are excluded
+  assert.equal(fileService.shouldIgnore('.tests', '.tests', [], true), true);
+  assert.equal(fileService.shouldIgnore('.vscode', '.vscode', [], true), true);
+  assert.equal(fileService.shouldIgnore('.github', '.github', [], true), true);
+  assert.equal(fileService.shouldIgnore('.custom_folder', '.custom_folder', [], true), true);
+  // Files nested inside foldernames starting with '.' are excluded
+  assert.equal(fileService.shouldIgnore('test.js', '.tests/test.js', [], false), true);
+  assert.equal(fileService.shouldIgnore('build.yml', '.github/workflows/build.yml', [], false), true);
+  // Dotfiles in root (not folders) are not excluded by folder rule
+  assert.equal(fileService.shouldIgnore('.gitignore', '.gitignore', [], false), false);
+  assert.equal(fileService.shouldIgnore('.env', '.env', [], false), false);
 });
 
 test('L2: fileService rejects null-byte injection security violations', async () => {

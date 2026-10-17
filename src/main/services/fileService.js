@@ -144,7 +144,24 @@ async function loadGitIgnore(rootPath) {
 /**
  * Check if a path should be ignored
  */
-function shouldIgnore(name, relativePath, customPatterns = []) {
+/**
+ * Check if a path should be ignored
+ * Excludes foldernames starting with '.' (e.g. .git, .tests, .vscode, .github, etc.)
+ */
+function shouldIgnore(name, relativePath = '', customPatterns = [], isDirectory = false) {
+  // Exclude foldernames that start with '.'
+  if (isDirectory && name.startsWith('.')) return true;
+
+  // Exclude if any directory segment in relativePath starts with '.'
+  if (relativePath) {
+    const norm = relativePath.replace(/\\/g, '/');
+    const parts = norm.split('/');
+    const dirParts = isDirectory ? parts : parts.slice(0, -1);
+    for (const part of dirParts) {
+      if (part.startsWith('.')) return true;
+    }
+  }
+
   if (DEFAULT_IGNORES.has(name)) return true;
   for (const pattern of customPatterns) {
     const cleanPattern = pattern.replace(/^\/|\/$/g, '');
@@ -175,6 +192,11 @@ async function scanDirectory(rootPath, options = {}) {
       const stat = await fs.promises.stat(currentPath);
 
       if (stat.isDirectory()) {
+        // Exclude any directory whose foldername starts with '.'
+        if (relativePath && (name.startsWith('.') || shouldIgnore(name, relativePath.replace(/\\/g, '/'), customIgnores, true))) {
+          return null;
+        }
+
         totalDirs++;
         const entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
         // Sort: directories first, then files alphabetically
@@ -187,6 +209,12 @@ async function scanDirectory(rootPath, options = {}) {
         const children = [];
         for (const entry of entries) {
           if (totalFiles >= maxFiles) break;
+
+          // Exclude any directory whose foldername starts with '.'
+          if (entry.isDirectory() && entry.name.startsWith('.')) {
+            continue;
+          }
+
           const childPath = path.join(currentPath, entry.name);
           const childRel = relativePath ? `${relativePath}/${entry.name}` : entry.name;
           const childNode = await walk(childPath, childRel);

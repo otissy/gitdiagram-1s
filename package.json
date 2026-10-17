@@ -6,19 +6,75 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node .tests/ladder-runner.js"
+    "test": "node .tests/ladder-runner.js",
+    "build:setup": "electron-builder --win nsis",
+    "build:standalone": "electron-builder --win portable",
+    "build": "electron-builder --win nsis portable",
+    "dist": "electron-builder --win nsis portable"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/otissy/gitdiagram-1s.git"
+  },
+  "keywords": [
+    "vision-ide",
+    "code-editor",
+    "architecture-visualizer",
+    "monaco",
+    "gitdiagram",
+    "ast-dependencies"
+  ],
+  "author": "Vision IDE Contributors",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^44.8.0"
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "d3": "^7.9.0",
     "monaco-editor": "^0.57.0",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"
+  },
+  "build": {
+    "appId": "com.visionide.app",
+    "productName": "Vision IDE",
+    "copyright": "Copyright © 2026 Vision IDE Contributors",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/renderer/assets/logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vision IDE",
+      "artifactName": "Vision-IDE-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Vision-IDE-Standalone-${version}.${ext}"
+    }
   }
 }

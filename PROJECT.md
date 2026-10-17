@@ -57,6 +57,14 @@ By default, Vision IDE runs in **Lightweight Viewer Mode** (<75MB RAM idle, inst
 4. **DOM & HTML Sanitization:**
    - `escapeHtml` is applied to all repository-controlled strings (branch names, file paths, symbol signatures, commit messages, and API error strings) before DOM injection.
 
+5. **File & Folder Filtering:**
+   - All foldernames starting with `.` (e.g. `.git`, `.tests`, `.vscode`, `.github`, `.user-data`, `.idea`, etc.) are excluded from directory traversal, repository scanning, file tree building, and diagram generation.
+   - Root dotfiles (e.g. `.gitignore`, `.env`) are preserved as files unless explicitly specified in `.gitignore`.
+
+6. **Open Source & Windows Packaging:**
+   - Distributed under the MIT License (`LICENSE`).
+   - `electron-builder` is configured exclusively for Windows Setup EXE (`nsis`) and Standalone portable executable (`portable`).
+
 ## Known problems
 
 None.

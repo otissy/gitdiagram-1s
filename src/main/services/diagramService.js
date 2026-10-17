@@ -202,6 +202,9 @@ async function generateDiagram(repoPath, flatFiles, options = {}) {
     if (nodes.length >= maxNodes) break;
 
     const dir = path.dirname(f.relativePath).replace(/\\/g, '/');
+    if (dir !== '.' && dir.split('/').some(seg => seg.startsWith('.'))) {
+      continue;
+    }
     const clusterId = dir === '.' ? 'root' : dir;
 
     if (!clusters.has(clusterId)) {

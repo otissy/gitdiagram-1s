@@ -19,6 +19,14 @@ test('L3: full workspace scanning and tree assembly', async () => {
   const mainFile = result.files.find(f => f.relativePath.replace(/\\/g, '/') === 'src/main/main.js');
   assert.ok(mainFile, 'src/main/main.js should be in scanned files');
   assert.equal(mainFile.language, 'javascript');
+
+  // Verify all foldernames starting with '.' are excluded from scan
+  const dotFolderFiles = result.files.filter(f => {
+    const parts = f.relativePath.replace(/\\/g, '/').split('/');
+    return parts.slice(0, -1).some(seg => seg.startsWith('.'));
+  });
+  assert.equal(dotFolderFiles.length, 0, 'Files inside foldernames starting with dot must not be scanned');
+  assert.equal(result.tree.children.some(c => c.type === 'directory' && c.name.startsWith('.')), false, 'Tree children must not contain foldernames starting with dot');
 });
 
 test('L3: git repository status and commit graph extraction', async () => {

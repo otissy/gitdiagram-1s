@@ -524,6 +524,7 @@ class DiagramRenderer {
 
     for (const node of nodes) {
       const parts = node.relativePath.split('/');
+      if (parts.slice(0, -1).some(p => p.startsWith('.'))) continue;
       let currentPath = '';
 
       for (let i = 0; i < parts.length - 1; i++) {
