@@ -48,7 +48,10 @@ ipcMain.handle('github:getUserRepos', () => ({
     { fullName: 'octocat/open-tools', private: false, language: 'JavaScript', stars: 120 }
   ]
 }));
-ipcMain.handle('github:fetchRemoteRepo', async () => ({ success: true, path: process.cwd(), fullName: 'octocat/secret-backend' }));
+const { GitHubRemoteService } = require('../src/main/services/githubRemoteService');
+const githubRemoteService = new GitHubRemoteService();
+ipcMain.handle('github:getRepoDetails', async (e, p, o, r) => await githubRemoteService.getRepoFullDetails(p, o, r));
+ipcMain.handle('shell:openExternal', async () => ({ success: true }));
 ipcMain.handle('window:minimize', () => {});
 ipcMain.handle('window:maximize', () => {});
 ipcMain.handle('window:close', () => {});
@@ -56,8 +59,8 @@ ipcMain.handle('window:isMaximized', () => false);
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
-    width: 1440,
-    height: 920,
+    width: 1366,
+    height: 768,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, '../src/preload/preload.js'),

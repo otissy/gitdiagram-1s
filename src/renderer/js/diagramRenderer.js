@@ -229,51 +229,62 @@ class DiagramRenderer {
     const padding = 12;
     const startX = 60;
     const startY = 50;
-    const colWidth = 320;
+    const colWidth = 340;
     const colGapX = 50;
 
     let currentX = startX;
 
     for (const col of activeColumns) {
-      let currentY = startY;
+      // Multi-column clustering for widescreen 16:9 readability: wrap if > 3 clusters in rank
+      const maxClustersPerCol = 3;
+      const numSubCols = Math.ceil(col.clusters.length / maxClustersPerCol);
 
-      for (const cluster of col.clusters) {
-        const cNodes = cluster.nodes;
-        // Multi-column files inside cluster if more than 3 files (drastically reduces height)
-        const innerCols = cNodes.length > 3 ? 2 : 1;
-        const innerNodeWidth = innerCols === 2 ? Math.floor((colWidth - padding * 2 - 10) / 2) : (colWidth - padding * 2);
-        const nodeHeight = 28;
-        const rows = Math.ceil(cNodes.length / innerCols);
-        const cHeight = padding * 2 + 24 + rows * (nodeHeight + 6);
+      for (let sc = 0; sc < numSubCols; sc++) {
+        const subClusters = col.clusters.slice(sc * maxClustersPerCol, (sc + 1) * maxClustersPerCol);
+        let currentY = startY;
 
-        const cx = currentX;
-        const cy = currentY;
+        for (const cluster of subClusters) {
+          const cNodes = cluster.nodes;
+          // Multi-column files inside cluster if more than 3 files (drastically reduces height)
+          const innerCols = cNodes.length > 3 ? 2 : 1;
+          const innerNodeWidth = innerCols === 2 ? Math.floor((colWidth - padding * 2 - 10) / 2) : (colWidth - padding * 2);
+          const nodeHeight = 30;
+          const rows = Math.ceil(cNodes.length / innerCols);
+          const cHeight = padding * 2 + 26 + rows * (nodeHeight + 8);
 
-        clusterLayouts.push({
-          id: cluster.id,
-          x: cx,
-          y: cy,
-          width: colWidth,
-          height: cHeight,
-          nodes: cNodes
-        });
+          const cx = currentX;
+          const cy = currentY;
 
-        // Position nodes inside cluster with strict grid offsets (ZERO OVERLAPPING GUARANTEED)
-        cNodes.forEach((node, idx) => {
-          const colIdx = idx % innerCols;
-          const rowIdx = Math.floor(idx / innerCols);
-          node.x = cx + padding + colIdx * (innerNodeWidth + 10);
-          node.y = cy + padding + 22 + rowIdx * (nodeHeight + 6);
-          node.width = innerNodeWidth;
-          node.height = nodeHeight;
-        });
+          const raw = cluster.id === 'root' ? '/' : cluster.id;
+          const displayLabel = raw.length > 22 ? `📁 ...${raw.slice(-19)}` : `📁 ${raw}`;
 
-        // Strict vertical spacing between clusters in the same column (ZERO OVERLAPPING GUARANTEED)
-        currentY += cHeight + 28;
+          clusterLayouts.push({
+            id: cluster.id,
+            displayLabel,
+            x: cx,
+            y: cy,
+            width: colWidth,
+            height: cHeight,
+            nodes: cNodes
+          });
+
+          // Position nodes inside cluster with strict grid offsets (ZERO OVERLAPPING GUARANTEED)
+          cNodes.forEach((node, idx) => {
+            const colIdx = idx % innerCols;
+            const rowIdx = Math.floor(idx / innerCols);
+            node.x = cx + padding + colIdx * (innerNodeWidth + 10);
+            node.y = cy + padding + 26 + rowIdx * (nodeHeight + 8);
+            node.width = innerNodeWidth;
+            node.height = nodeHeight;
+          });
+
+          // Strict vertical spacing between clusters in the same column (ZERO OVERLAPPING GUARANTEED)
+          currentY += cHeight + 30;
+        }
+
+        // Advance X for sub-column or main column
+        currentX += colWidth + (sc < numSubCols - 1 ? 24 : colGapX);
       }
-
-      // Advance X for next architectural rank column
-      currentX += colWidth + colGapX;
     }
 
     // Draw cluster boxes (GitDiagram Glassmorphism styling)
@@ -301,12 +312,12 @@ class DiagramRenderer {
       .attr('height', 24)
       .attr('rx', 10);
 
-    // Folder Label
+    // Folder Label (safe truncated so it never overlaps the files count badge)
     clusterElements.append('text')
       .attr('class', 'diagram-cluster-label')
       .attr('x', d => d.x + 12)
       .attr('y', d => d.y + 16)
-      .text(d => `📁 ${d.id === 'root' ? '/' : d.id}`);
+      .text(d => d.displayLabel);
 
     // Files Count Badge
     clusterElements.append('text')
@@ -372,7 +383,7 @@ class DiagramRenderer {
   }
 
   /**
-   * Mode 2: Dependency Flow (D3 Force Simulation)
+   * Mode 2: Dependency Flow (Topological DAG Layout - 100% Zero Overlap)
    */
   renderDependencyFlow() {
     const { nodes, links } = this.currentData;
@@ -395,47 +406,110 @@ class DiagramRenderer {
         target: typeof l.target === 'object' ? l.target.id : l.target
       }));
 
-    // Setup force simulation
-    const width = this.container.clientWidth || 900;
-    const height = this.container.clientHeight || 700;
+    // Topological Rank Partitioning (0: Entry -> 1: Views -> 2: Services -> 3: Utils/Leaves)
+    const getDepRank = (node) => {
+      if (node.role === 'entry' || node.inDegree === 0) return 0;
+      if (node.role === 'component' || node.cluster.includes('renderer') || node.cluster.includes('component')) return 1;
+      if (node.role === 'service' || node.cluster.includes('service')) return 2;
+      return 3;
+    };
 
-    this.simulation = d3.forceSimulation(filteredNodes)
-      .force('link', d3.forceLink(filteredLinks).id(d => d.id).distance(110))
-      .force('charge', d3.forceManyBody().strength(-350))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('x', d3.forceX(width / 2).strength(0.04))
-      .force('y', d3.forceY(height / 2).strength(0.12)) // Compress vertical height for 16:9 widescreen
-      .force('collision', d3.forceCollide().radius(48));
+    const rankBuckets = [[], [], [], []];
+    for (const node of filteredNodes) {
+      const rank = getDepRank(node);
+      rankBuckets[rank].push(node);
+    }
+
+    const startX = 60;
+    const startY = 60;
+    const cardWidth = 175;
+    const cardHeight = 32;
+    const colGapX = 55;
+    const rowGapY = 12;
+
+    let currentX = startX;
+
+    // Lay out each rank column with discrete, non-overlapping coordinates
+    rankBuckets.forEach((rankNodes, rankIdx) => {
+      if (rankNodes.length === 0) return;
+
+      // If more than 9 nodes in a rank, split into 2 sub-columns for widescreen 16:9 layout
+      const subCols = rankNodes.length > 9 ? 2 : 1;
+      const nodesPerSubCol = Math.ceil(rankNodes.length / subCols);
+
+      for (let sc = 0; sc < subCols; sc++) {
+        const subList = rankNodes.slice(sc * nodesPerSubCol, (sc + 1) * nodesPerSubCol);
+
+        subList.forEach((node, rowIdx) => {
+          node.x = currentX;
+          node.y = startY + rowIdx * (cardHeight + rowGapY);
+          node.width = cardWidth;
+          node.height = cardHeight;
+        });
+
+        currentX += cardWidth + (sc < subCols - 1 ? 16 : colGapX);
+      }
+    });
 
     // Links layer
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
+    const nodeMap = new Map(filteredNodes.map(n => [n.id, n]));
+
     const linkPaths = linkG.selectAll('.diagram-link')
       .data(filteredLinks)
       .enter()
       .append('path')
       .attr('class', 'diagram-link')
-      .attr('marker-end', 'url(#arrow-import)');
+      .attr('marker-end', 'url(#arrow-import)')
+      .attr('d', d => {
+        const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
+        const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+        if (!src || !tgt) return '';
 
-    // Nodes layer
-    const nodeElements = this.renderNodeElements(filteredNodes, linkPaths, true);
+        const x1 = src.x + src.width;
+        const y1 = src.y + src.height / 2;
+        const x2 = tgt.x;
+        const y2 = tgt.y + tgt.height / 2;
 
-    this.simulation.on('tick', () => {
-      linkPaths.attr('d', d => {
-        const x1 = d.source.x;
-        const y1 = d.source.y;
-        const x2 = d.target.x;
-        const y2 = d.target.y;
-        return `M ${x1} ${y1} L ${x2} ${y2}`;
+        if (x1 <= x2) {
+          const dx = Math.max(25, (x2 - x1) * 0.45);
+          return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        } else {
+          const dx = Math.max(30, (x1 - x2) * 0.35);
+          return `M ${src.x} ${y1} C ${src.x - dx} ${y1}, ${tgt.x + tgt.width + dx} ${y2}, ${tgt.x + tgt.width} ${y2}`;
+        }
       });
 
-      nodeElements.attr('transform', d => `translate(${d.x - 65}, ${d.y - 17})`);
-    });
+    // Nodes layer
+    const nodeElements = this.renderNodeElements(filteredNodes, linkPaths, false);
+
+    // Interactive Drag Support: Allows user to nudge nodes while keeping links connected
+    nodeElements.call(d3.drag()
+      .on('drag', (event, d) => {
+        d.x = event.x;
+        d.y = event.y;
+        d3.select(event.sourceEvent.target.closest('.diagram-node'))
+          .attr('transform', `translate(${d.x}, ${d.y})`);
+
+        linkPaths.attr('d', l => {
+          const src = nodeMap.get(typeof l.source === 'object' ? l.source.id : l.source);
+          const tgt = nodeMap.get(typeof l.target === 'object' ? l.target.id : l.target);
+          if (!src || !tgt) return '';
+          const x1 = src.x + src.width;
+          const y1 = src.y + src.height / 2;
+          const x2 = tgt.x;
+          const y2 = tgt.y + tgt.height / 2;
+          const dx = Math.max(25, Math.abs(x2 - x1) * 0.45);
+          return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        });
+      })
+    );
 
     if (this.diagramStats) {
       this.diagramStats.textContent = `Dependency Flow: ${filteredNodes.length} nodes • ${filteredLinks.length} import connections`;
     }
 
-    setTimeout(() => this.fitToScreen(), 400);
+    this.fitToScreen();
   }
 
   /**
@@ -669,55 +743,11 @@ class DiagramRenderer {
     const nodes = symData.nodes;
     const links = symData.links;
 
-    // Setup force simulation
-    const width = this.container.clientWidth || 900;
-    const height = this.container.clientHeight || 700;
-
-    // Layout configuration by kind
-    nodes.forEach(n => {
-      if (n.kind === 'class') {
-        n.width = 180;
-        n.height = 42;
-      } else if (n.kind === 'method') {
-        n.width = 160;
-        n.height = 34;
-      } else if (n.kind === 'function') {
-        n.width = 170;
-        n.height = 36;
-      } else if (n.kind === 'interface') {
-        n.width = 165;
-        n.height = 36;
-      } else {
-        // variable or constant
-        n.width = 145;
-        n.height = 30;
-      }
-    });
-
-    const activeNodeIds = new Set(nodes.map(n => n.id));
-    const activeLinks = links
-      .filter(l => {
-        const s = typeof l.source === 'object' ? l.source.id : l.source;
-        const t = typeof l.target === 'object' ? l.target.id : l.target;
-        return activeNodeIds.has(s) && activeNodeIds.has(t);
-      })
-      .map(l => ({
-        source: typeof l.source === 'object' ? l.source.id : l.source,
-        target: typeof l.target === 'object' ? l.target.id : l.target,
-        type: l.type,
-        line: l.line
-      }));
-
-    this.simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(activeLinks).id(d => d.id).distance(d => d.type === 'contains' ? 65 : 120))
-      .force('charge', d3.forceManyBody().strength(-320))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(45));
 
     // Scope banner (File vs All)
     const scopeG = this.zoomGroup.append('g')
       .attr('class', 'symbol-scope-banner')
-      .attr('transform', 'translate(30, 30)')
+      .attr('transform', 'translate(60, 20)')
       .style('cursor', 'pointer');
 
     const scopeLabel = this.symbolScope === 'all'
@@ -727,7 +757,7 @@ class DiagramRenderer {
     scopeG.append('rect')
       .attr('rx', 6)
       .attr('ry', 6)
-      .attr('width', Math.max(260, scopeLabel.length * 7.5))
+      .attr('width', Math.max(280, scopeLabel.length * 7.5))
       .attr('height', 28)
       .attr('fill', '#161b22')
       .attr('stroke', '#388bfd')
@@ -747,6 +777,249 @@ class DiagramRenderer {
       this.render();
     });
 
+    // Structure and lay out symbols with 100% MATHEMATICAL ZERO OVERLAP
+    const symbolClusters = [];
+    const padding = 12;
+    const startX = 60;
+    const startY = 68;
+
+    if (this.symbolScope !== 'all') {
+      // ACTIVE FILE SCOPE: Structured Blueprint Lanes (Classes -> Functions -> Variables)
+      const classes = nodes.filter(n => n.kind === 'class' || n.kind === 'interface');
+      const functions = nodes.filter(n => n.kind === 'function' || n.kind === 'method');
+      const variables = nodes.filter(n => n.kind === 'variable' || n.kind === 'constant');
+
+      let currentX = startX;
+
+      // Lane 1: Classes & Interfaces (if any)
+      if (classes.length > 0) {
+        const cardWidth = 240;
+        const cardHeight = 44;
+        const rowGap = 12;
+        const cWidth = cardWidth + padding * 2;
+        const cHeight = padding * 2 + 24 + classes.length * (cardHeight + rowGap);
+
+        symbolClusters.push({
+          label: `📐 Classes & Interfaces`,
+          count: classes.length,
+          x: currentX,
+          y: startY,
+          width: cWidth,
+          height: cHeight
+        });
+
+        classes.forEach((c, idx) => {
+          c.width = cardWidth;
+          c.height = cardHeight;
+          c.x = currentX + padding;
+          c.y = startY + padding + 22 + idx * (cardHeight + rowGap);
+        });
+
+        currentX += cWidth + 40;
+      }
+
+      // Lane 2: Functions & Callables (if any)
+      if (functions.length > 0) {
+        const cols = functions.length > 8 ? 2 : 1;
+        const cardWidth = cols === 2 ? 220 : 260;
+        const cardHeight = 42;
+        const colGap = 12;
+        const rowGap = 12;
+        const rows = Math.ceil(functions.length / cols);
+        const cWidth = padding * 2 + cols * cardWidth + (cols - 1) * colGap;
+        const cHeight = padding * 2 + 24 + rows * (cardHeight + rowGap);
+
+        symbolClusters.push({
+          label: `ƒ Functions & Callables`,
+          count: functions.length,
+          x: currentX,
+          y: startY,
+          width: cWidth,
+          height: cHeight
+        });
+
+        functions.forEach((f, idx) => {
+          const cIdx = idx % cols;
+          const rIdx = Math.floor(idx / cols);
+          f.width = cardWidth;
+          f.height = cardHeight;
+          f.x = currentX + padding + cIdx * (cardWidth + colGap);
+          f.y = startY + padding + 22 + rIdx * (cardHeight + rowGap);
+        });
+
+        currentX += cWidth + 40;
+      }
+
+      // Lane 3: Variables & Constants (Compact multi-column grid)
+      if (variables.length > 0) {
+        // Multi-column grid packing: up to 4 columns for large variable counts (guarantees widescreen 16:9 compactness)
+        const cols = variables.length > 40 ? 4 : (variables.length > 20 ? 3 : (variables.length > 8 ? 2 : 1));
+        const cardWidth = 150;
+        const cardHeight = 30;
+        const colGap = 10;
+        const rowGap = 8;
+        const rows = Math.ceil(variables.length / cols);
+        const cWidth = padding * 2 + cols * cardWidth + (cols - 1) * colGap;
+        const cHeight = padding * 2 + 24 + rows * (cardHeight + rowGap);
+
+        symbolClusters.push({
+          label: `📦 Scope Variables & Constants`,
+          count: variables.length,
+          x: currentX,
+          y: startY,
+          width: cWidth,
+          height: cHeight
+        });
+
+        variables.forEach((v, idx) => {
+          const cIdx = idx % cols;
+          const rIdx = Math.floor(idx / cols);
+          v.width = cardWidth;
+          v.height = cardHeight;
+          v.x = currentX + padding + cIdx * (cardWidth + colGap);
+          v.y = startY + padding + 22 + rIdx * (cardHeight + rowGap);
+        });
+
+        currentX += cWidth + 40;
+      }
+    } else {
+      // REPO-WIDE SCOPE: File-partitioned clusters across columns
+      const fileGroups = new Map();
+      for (const node of nodes) {
+        const fileKey = node.relativePath;
+        if (!fileGroups.has(fileKey)) fileGroups.set(fileKey, []);
+        fileGroups.get(fileKey).push(node);
+      }
+
+      let currentX = startX;
+      let currentY = startY;
+      let colMaxX = startX;
+
+      for (const [fileRel, fNodes] of fileGroups.entries()) {
+        const funcs = fNodes.filter(n => n.kind === 'function' || n.kind === 'method' || n.kind === 'class');
+        const vars = fNodes.filter(n => n.kind === 'variable' || n.kind === 'constant');
+
+        const cardWidth = 180;
+        const cardHeight = 32;
+        const cols = (funcs.length > 0 && vars.length > 0) ? 2 : 1;
+        const totalItems = Math.max(funcs.length, vars.length);
+        const cWidth = padding * 2 + cols * cardWidth + (cols - 1) * 12;
+        const cHeight = padding * 2 + 24 + totalItems * (cardHeight + 8);
+
+        // If column gets too tall, wrap to next column
+        if (currentY + cHeight > 950 && currentY > startY) {
+          currentX = colMaxX + 40;
+          currentY = startY;
+        }
+
+        const rawName = fileRel.split('/').pop();
+        symbolClusters.push({
+          label: `📁 ${rawName}`,
+          count: fNodes.length,
+          x: currentX,
+          y: currentY,
+          width: cWidth,
+          height: cHeight
+        });
+
+        funcs.forEach((f, idx) => {
+          f.width = cardWidth;
+          f.height = cardHeight;
+          f.x = currentX + padding;
+          f.y = currentY + padding + 22 + idx * (cardHeight + 8);
+        });
+
+        vars.forEach((v, idx) => {
+          v.width = cardWidth;
+          v.height = cardHeight;
+          v.x = currentX + padding + (cols === 2 ? (cardWidth + 12) : 0);
+          v.y = currentY + padding + 22 + idx * (cardHeight + 8);
+        });
+
+        currentY += cHeight + 28;
+        colMaxX = Math.max(colMaxX, currentX + cWidth);
+      }
+    }
+
+    // Draw cluster container cards
+    const clusterG = this.zoomGroup.append('g').attr('class', 'clusters-layer');
+    const clusterElements = clusterG.selectAll('.diagram-cluster-box')
+      .data(symbolClusters)
+      .enter()
+      .append('g')
+      .attr('class', 'diagram-cluster-box');
+
+    // Outer frosted box
+    clusterElements.append('rect')
+      .attr('class', 'diagram-cluster')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y)
+      .attr('width', d => d.width)
+      .attr('height', d => d.height);
+
+    // Header strip
+    clusterElements.append('rect')
+      .attr('class', 'diagram-cluster-header')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y)
+      .attr('width', d => d.width)
+      .attr('height', 24)
+      .attr('rx', 10);
+
+    // Cluster label
+    clusterElements.append('text')
+      .attr('class', 'diagram-cluster-label')
+      .attr('x', d => d.x + 12)
+      .attr('y', d => d.y + 16)
+      .text(d => d.label);
+
+    // Count badge
+    clusterElements.append('text')
+      .attr('class', 'diagram-cluster-count')
+      .attr('x', d => d.x + d.width - 12)
+      .attr('y', d => d.y + 16)
+      .attr('text-anchor', 'end')
+      .text(d => `${d.count} symbols`);
+
+    // Prepare link map
+    const activeNodeIds = new Set(nodes.map(n => n.id));
+    const activeLinks = links
+      .filter(l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        return activeNodeIds.has(s) && activeNodeIds.has(t);
+      })
+      .map(l => ({
+        source: typeof l.source === 'object' ? l.source.id : l.source,
+        target: typeof l.target === 'object' ? l.target.id : l.target,
+        type: l.type,
+        line: l.line
+      }));
+
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+    const computeCurvePath = (d) => {
+      const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
+      const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+      if (!src || !tgt) return '';
+
+      const x1 = src.x + src.width;
+      const y1 = src.y + src.height / 2;
+      const x2 = tgt.x;
+      const y2 = tgt.y + tgt.height / 2;
+
+      if (src.x + src.width <= tgt.x) {
+        const dx = Math.max(25, (tgt.x - (src.x + src.width)) * 0.45);
+        return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+      } else if (src.x >= tgt.x + tgt.width) {
+        const dx = Math.max(30, (src.x - (tgt.x + tgt.width)) * 0.45);
+        return `M ${src.x} ${y1} C ${src.x - dx} ${y1}, ${tgt.x + tgt.width + dx} ${y2}, ${tgt.x + tgt.width} ${y2}`;
+      } else {
+        const arcX = Math.max(x1, tgt.x + tgt.width) + 24;
+        return `M ${x1} ${y1} C ${arcX} ${y1}, ${arcX} ${y2}, ${tgt.x + tgt.width} ${y2}`;
+      }
+    };
+
     // Links layer
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
     const linkPaths = linkG.selectAll('.diagram-link')
@@ -756,7 +1029,8 @@ class DiagramRenderer {
       .attr('class', d => `diagram-link type-${d.type}`)
       .attr('stroke', d => d.type === 'contains' ? '#a371f7' : d.type === 'inherits' ? '#3fb950' : '#58a6ff')
       .attr('stroke-dasharray', d => d.type === 'contains' ? '4 3' : null)
-      .attr('marker-end', d => d.type === 'calls' ? 'url(#arrow-call)' : d.type === 'inherits' ? 'url(#arrow-inherit)' : null);
+      .attr('marker-end', d => d.type === 'calls' ? 'url(#arrow-call)' : d.type === 'inherits' ? 'url(#arrow-inherit)' : null)
+      .attr('d', d => computeCurvePath(d));
 
     // Nodes layer
     const nodeG = this.zoomGroup.append('g').attr('class', 'nodes-layer');
@@ -765,24 +1039,19 @@ class DiagramRenderer {
       .enter()
       .append('g')
       .attr('class', 'diagram-node diagram-symbol-node')
-      .attr('id', d => 'sym-' + d.id.replace(/[^a-zA-Z0-9_-]/g, '_'));
+      .attr('id', d => 'sym-' + d.id.replace(/[^a-zA-Z0-9_-]/g, '_'))
+      .attr('transform', d => `translate(${d.x}, ${d.y})`);
 
-    // Drag behavior
+    // Interactive Drag Support: Live curve recomputation
     nodeSelection.call(d3.drag()
-      .on('start', (event, d) => {
-        if (!event.active) this.simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-      })
       .on('drag', (event, d) => {
-        d.fx = event.x;
-        d.fy = event.y;
+        d.x = event.x;
+        d.y = event.y;
+        d3.select(event.sourceEvent.target.closest('.diagram-symbol-node'))
+          .attr('transform', `translate(${d.x}, ${d.y})`);
+        linkPaths.attr('d', l => computeCurvePath(l));
       })
-      .on('end', (event, d) => {
-        if (!event.active) this.simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-      }));
+    );
 
     // Node card rect
     nodeSelection.append('rect')
@@ -792,23 +1061,32 @@ class DiagramRenderer {
       .attr('ry', 6)
       .attr('fill', '#161b22')
       .attr('stroke', d => this.getSymbolKindColor(d.kind))
-      .attr('stroke-width', d => d.kind === 'class' ? 2 : 1.5);
+      .attr('stroke-width', d => d.kind === 'class' ? 2 : 1.3);
+
+    // Left role/kind color accent bar
+    nodeSelection.append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', 3.5)
+      .attr('height', d => d.height)
+      .attr('rx', 1.5)
+      .attr('fill', d => this.getSymbolKindColor(d.kind));
 
     // Kind Badge Circle
     nodeSelection.append('circle')
-      .attr('cx', 16)
+      .attr('cx', 14)
       .attr('cy', d => d.height / 2)
-      .attr('r', 8)
+      .attr('r', 7.5)
       .attr('fill', d => this.getSymbolKindColor(d.kind))
       .attr('opacity', 0.25);
 
     // Kind Badge Letter
     nodeSelection.append('text')
-      .attr('x', 16)
-      .attr('y', d => d.height / 2 + 4)
+      .attr('x', 14)
+      .attr('y', d => d.height / 2 + 3.5)
       .attr('text-anchor', 'middle')
       .attr('fill', d => this.getSymbolKindColor(d.kind))
-      .attr('font-size', '10px')
+      .attr('font-size', '9px')
       .attr('font-family', 'var(--font-mono)')
       .attr('font-weight', '700')
       .text(d => this.getSymbolBadge(d.kind));
@@ -816,23 +1094,24 @@ class DiagramRenderer {
     // Symbol Name
     nodeSelection.append('text')
       .attr('class', 'diagram-node-label')
-      .attr('x', 32)
-      .attr('y', d => d.height > 34 ? 18 : 16)
+      .attr('x', 26)
+      .attr('y', d => d.height > 34 ? 17 : 15)
       .attr('font-weight', '600')
       .text(d => {
         const n = d.shortName || d.name;
-        return n.length > 16 ? n.substring(0, 15) + '…' : n;
+        const maxLen = d.width > 200 ? 20 : 13;
+        return n.length > maxLen ? n.substring(0, maxLen - 1) + '…' : n;
       });
 
-    // Subtitle / Line number badge
+    // Subtitle / Line badge
     nodeSelection.append('text')
       .attr('class', 'diagram-node-badge')
-      .attr('x', 32)
-      .attr('y', d => d.height > 34 ? 32 : 26)
+      .attr('x', 26)
+      .attr('y', d => d.height > 34 ? 31 : 25)
       .text(d => {
         if (d.params) {
           const p = `(${d.params})`;
-          return p.length > 16 ? p.substring(0, 15) + '…' : p;
+          return p.length > 20 ? p.substring(0, 19) + '…' : p;
         }
         return `Line ${d.line} • ${d.kind}`;
       });
@@ -851,7 +1130,6 @@ class DiagramRenderer {
     nodeSelection.on('click', (event, d) => {
       this.activeNodeId = d.id;
       nodeSelection.classed('active', n => n.id === d.id);
-
       window.monacoController.openFileAndReveal(d.filePath, d.relativePath, d.line, d.name);
 
       if (window.outlineController) {
@@ -895,24 +1173,11 @@ class DiagramRenderer {
         .classed('dimmed', false);
     });
 
-    // Tick layout
-    this.simulation.on('tick', () => {
-      linkPaths.attr('d', d => {
-        const x1 = d.source.x;
-        const y1 = d.source.y;
-        const x2 = d.target.x;
-        const y2 = d.target.y;
-        return `M ${x1} ${y1} L ${x2} ${y2}`;
-      });
-
-      nodeSelection.attr('transform', d => `translate(${d.x - d.width / 2}, ${d.y - d.height / 2})`);
-    });
-
     if (this.diagramStats) {
       this.diagramStats.textContent = `Symbols: ${symData.stats.totalSymbols} items • ${symData.stats.classes} classes • ${symData.stats.functions} funcs • ${symData.stats.variables} vars • ${symData.stats.calls} calls`;
     }
 
-    setTimeout(() => this.fitToScreen(), 350);
+    this.fitToScreen();
   }
 
   showSymbolTooltip(event, d) {
@@ -1270,8 +1535,8 @@ class DiagramRenderer {
       const midX = bounds.x + width / 2;
       const midY = bounds.y + height / 2;
 
-      const rawScale = 0.88 / Math.max(width / fullWidth, height / fullHeight);
-      const scale = Math.max(0.68, Math.min(1.15, rawScale));
+      const rawScale = 0.88 / Math.max((width + 40) / fullWidth, (height + 40) / fullHeight);
+      const scale = Math.max(0.35, Math.min(1.15, rawScale));
       const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
 
       this.svg.transition().duration(400).call(
