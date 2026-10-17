@@ -1,7 +1,7 @@
 @echo off
-title GitDiagram 1s
+title Vision IDE
 echo ========================================================
-echo   GitDiagram 1s - Local GitHub1s & GitDiagram Desktop
+echo   Vision IDE - The Visual-First Desktop Code Editor
 echo ========================================================
 echo.
 
@@ -17,5 +17,5 @@ if not exist "node_modules" (
   call npm install
 )
 
-echo Launching GitDiagram 1s...
+echo Launching Vision IDE...
 call npm start

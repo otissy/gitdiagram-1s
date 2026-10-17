@@ -1,7 +1,8 @@
 {
-  "name": "gitdiagram-1s",
+  "name": "vision-ide",
+  "productName": "Vision IDE",
   "version": "1.0.0",
-  "description": "Windows Native GitHub1s & GitDiagram Desktop Codebase & Architecture Visualizer",
+  "description": "Vision IDE - The Visual-First Desktop Code Editor & Codebase Architecture Visualizer",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",

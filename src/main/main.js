@@ -51,9 +51,9 @@ function createWindow() {
     minWidth: 960,
     minHeight: 520,
     frame: false, // Custom modern Windows title bar
-    title: 'GitDiagram 1s',
+    title: 'Vision IDE',
     backgroundColor: '#0d1117',
-    icon: path.join(__dirname, '../../assets/icon.png'),
+    icon: path.join(__dirname, '../renderer/assets/logo.png'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,

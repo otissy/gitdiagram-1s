@@ -386,7 +386,7 @@ class App {
     const repoName = this.currentScanResult.rootName || 'Repository';
     this.repoNameText.textContent = repoName;
     this.repoNameText.title = folderPath;
-    document.title = `${repoName} — GitDiagram 1s`;
+    document.title = `${repoName} — Vision IDE`;
 
     if (this.sbFilesText) {
       this.sbFilesText.textContent = `${this.allFiles.length} files • ${(this.currentScanResult.stats.totalLines || 0).toLocaleString()} lines`;

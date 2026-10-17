@@ -35,7 +35,8 @@ test('L1: githubRemoteService loads without error', () => {
 
 test('L1: package.json is valid and points to main', () => {
   const pkg = require('../../package.json');
-  assert.equal(pkg.name, 'gitdiagram-1s');
+  assert.ok(pkg.name === 'vision-ide' || pkg.name === 'gitdiagram-1s');
+  assert.equal(pkg.productName, 'Vision IDE');
   assert.equal(pkg.main, 'src/main/main.js');
 });
 

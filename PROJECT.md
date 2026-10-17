@@ -1,12 +1,12 @@
-# PROJECT.md — GitDiagram 1s (Desktop Git & Codebase Architecture Visualizer)
+# PROJECT.md — Vision IDE (Visual Code Editor & Codebase Architecture Visualizer)
 
 The map of the ground. Read before any task; update at the end of every task.
 
 ## Current state
 
-GitDiagram 1s is a Windows and Linux desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It supports opening any local folder or Git repository, as well as typing/pasting any remote GitHub repository (`owner/repo` or URL) for public repos and logging in with a GitHub Personal Access Token to explore private repositories. It includes deep symbol-level exploration (classes, methods, functions, variables, constants, interfaces), call hierarchy visualization, and instant click-to-jump line navigation in Monaco Editor.
+Vision IDE is a Windows and Linux desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It supports opening any local folder or Git repository, as well as typing/pasting any remote GitHub repository (`owner/repo` or URL) for public repos and logging in with a GitHub Personal Access Token to explore private repositories. It includes deep symbol-level exploration (classes, methods, functions, variables, constants, interfaces), call hierarchy visualization, and instant click-to-jump line navigation in Monaco Editor.
 
-By default, GitDiagram 1s runs in **Lightweight Viewer Mode** (<75MB RAM idle, instant startup, read-only exploration). Users can explicitly opt into **Developer IDE Mode**, which dynamically activates an interactive Integrated Terminal drawer (xterm.js + native shell), Command Palette (`Ctrl+Shift+P` / `F1`), live in-place file editing with `Ctrl+S` workspace writes, dirty-state tab indicators, and a real-time developer status bar.
+By default, Vision IDE runs in **Lightweight Viewer Mode** (<75MB RAM idle, instant startup, read-only exploration). Users can explicitly opt into **Developer IDE Mode**, which dynamically activates an interactive Integrated Terminal drawer (xterm.js + native shell), Command Palette (`Ctrl+Shift+P` / `F1`), live in-place file editing with `Ctrl+S` workspace writes, dirty-state tab indicators, and a real-time developer status bar.
 
 ## How to run and test
 

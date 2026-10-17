@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';">
-  <title>GitDiagram 1s</title>
+  <title>Vision IDE</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/sidebar.css">
   <link rel="stylesheet" href="css/diagram.css">
@@ -16,15 +16,8 @@
     <header id="titlebar">
       <div class="titlebar-left">
         <div class="app-branding">
-          <div class="app-logo-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <circle cx="18" cy="18" r="3"></circle>
-              <circle cx="6" cy="6" r="3"></circle>
-              <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
-              <line x1="6" y1="9" x2="6" y2="21"></line>
-            </svg>
-          </div>
-          <span>GitDiagram 1s</span>
+          <img src="assets/logo.png" alt="Vision IDE" class="app-logo-img" style="width: 18px; height: 18px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(88, 166, 255, 0.5);">
+          <span style="font-weight: 700; letter-spacing: -0.2px; background: linear-gradient(135deg, #58a6ff 0%, #a371f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Vision IDE</span>
         </div>
         <button id="btn-open-folder" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -409,17 +402,12 @@
     <!-- Welcome / Empty Screen -->
     <div id="welcome-screen">
       <div class="welcome-card">
-        <div class="welcome-logo">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2">
-            <circle cx="18" cy="18" r="3"></circle>
-            <circle cx="6" cy="6" r="3"></circle>
-            <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
-            <line x1="6" y1="9" x2="6" y2="21"></line>
-          </svg>
+        <div class="welcome-logo-container" style="display: flex; justify-content: center; margin-bottom: 14px;">
+          <img src="assets/logo.png" alt="Vision IDE" style="width: 100px; height: 100px; border-radius: 20px; box-shadow: 0 8px 32px rgba(88, 166, 255, 0.45), 0 0 0 1px rgba(88, 166, 255, 0.3);">
         </div>
-        <h1 class="welcome-title">GitDiagram 1s</h1>
+        <h1 class="welcome-title" style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #ffffff 0%, #58a6ff 60%, #a371f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Vision IDE</h1>
         <p class="welcome-desc">
-          Instant GitHub1s Monaco code exploration combined with interactive GitDiagram architecture & dependency visualization for any local repository or folder.
+          The visual-first code editor and architecture visualizer. Instant Monaco editing, visual codebase maps, and deep AST dependency graphs for any project.
         </p>
 
         <div id="welcome-drop-zone" class="drop-zone">
@@ -612,7 +600,7 @@
         </div>
         <div class="modal-body" style="padding: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
           <p style="margin-top: 0;">
-            GitDiagram 1s runs by default in <strong>Lightweight Viewer Mode</strong> (instant launch, minimal memory, read-only exploration).
+            Vision IDE runs by default in <strong>Lightweight Viewer Mode</strong> (instant launch, minimal memory, read-only exploration).
           </p>
           <p>
             Opting into <strong>IDE Mode</strong> unlocks native developer tooling:

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# GitDiagram 1s - Linux Launch Script
+# Vision IDE - Linux Launch Script
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "========================================================"
-echo "  GitDiagram 1s - Local GitHub1s & GitDiagram Desktop"
+echo "  Vision IDE - The Visual-First Desktop Code Editor"
 echo "========================================================"
 
 if ! command -v node >/dev/null 2>&1; then
@@ -19,5 +19,5 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
-echo "Launching GitDiagram 1s..."
+echo "Launching Vision IDE..."
 npm start
