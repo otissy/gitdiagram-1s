@@ -675,6 +675,8 @@ class DiagramRenderer {
       .enter()
       .append('path')
       .attr('class', 'diagram-link')
+      .style('stroke', 'rgba(240, 246, 252, 0.35)')
+      .style('stroke-width', '1.6px')
       .attr('d', d3.linkHorizontal().x(d => d.y + 60).y(d => d.x + 60));
 
     // Nodes
