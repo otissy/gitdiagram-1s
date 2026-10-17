@@ -1,0 +1,340 @@
+/* GitDiagram Interactive Visualizer Styling */
+
+.diagram-header-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 20;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.diagram-header-toolbar::-webkit-scrollbar {
+  height: 2px;
+}
+
+.diagram-mode-selector {
+  display: flex;
+  align-items: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.diagram-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diagram-mode-btn:hover {
+  color: var(--text-primary);
+}
+
+.diagram-mode-btn.active {
+  background: #1f6feb;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(31, 111, 235, 0.4);
+}
+
+.diagram-tools-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diagram-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 3px 8px;
+  width: 140px;
+}
+
+.diagram-search-box input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 11px;
+  outline: none;
+  width: 100%;
+}
+
+.depth-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.depth-slider-container input[type="range"] {
+  width: 70px;
+  cursor: pointer;
+  accent-color: var(--accent-blue);
+}
+
+.diagram-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Floating Zoom & Position Controls */
+.diagram-floating-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 2px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+
+.diagram-floating-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.12s ease;
+}
+
+.diagram-floating-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Legend bar */
+.diagram-legend-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  z-index: 25;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* SVG Interactive Canvas */
+#diagram-svg-container {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 46px);
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+}
+
+#diagram-svg-container:active {
+  cursor: grabbing;
+}
+
+#diagram-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Cluster Box */
+.diagram-cluster {
+  fill: rgba(22, 27, 34, 0.45);
+  stroke: rgba(240, 246, 252, 0.12);
+  stroke-dasharray: 4 4;
+  rx: 8;
+  ry: 8;
+  transition: all 0.2s ease;
+}
+
+.diagram-cluster:hover {
+  fill: rgba(31, 111, 235, 0.08);
+  stroke: rgba(88, 166, 255, 0.35);
+}
+
+.diagram-cluster-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--text-muted);
+  user-select: none;
+}
+
+/* Node Elements */
+.diagram-node {
+  cursor: pointer;
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.1s ease;
+}
+
+.diagram-node rect {
+  rx: 6;
+  ry: 6;
+  fill: #161b22;
+  stroke: rgba(240, 246, 252, 0.15);
+  stroke-width: 1.5;
+  transition: all 0.15s ease;
+}
+
+.diagram-node:hover rect {
+  stroke-width: 2;
+  fill: #21262d;
+  filter: drop-shadow(0 4px 12px rgba(88, 166, 255, 0.3));
+}
+
+.diagram-node.active rect {
+  stroke: var(--accent-blue);
+  stroke-width: 2.5;
+  fill: #1f2937;
+  filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.6));
+}
+
+.diagram-node.dimmed {
+  opacity: 0.15;
+}
+
+.diagram-node-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  fill: #f0f6fc;
+  user-select: none;
+}
+
+.diagram-node-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: #8b949e;
+}
+
+/* Edge / Links */
+.diagram-link {
+  fill: none;
+  stroke: rgba(240, 246, 252, 0.18);
+  stroke-width: 1.5;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.diagram-link.highlighted {
+  stroke: var(--accent-blue);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 4px rgba(88, 166, 255, 0.5));
+}
+
+.diagram-link.incoming {
+  stroke: var(--accent-green);
+  stroke-width: 2.5;
+}
+
+.diagram-link.outgoing {
+  stroke: var(--accent-purple);
+  stroke-width: 2.5;
+}
+
+.diagram-link.dimmed {
+  opacity: 0.08;
+}
+
+/* Tooltip */
+#diagram-tooltip {
+  position: absolute;
+  display: none;
+  background: rgba(22, 27, 34, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 100;
+  max-width: 280px;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-bottom: 4px;
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+/* Export Toast Notification */
+.toast-notice {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent-green);
+  color: var(--text-primary);
+  padding: 10px 18px;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-notice.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

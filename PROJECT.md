@@ -8,9 +8,10 @@ GitDiagram 1s is a Windows native desktop application combining the fast, compre
 
 ## How to run and test
 
-- run: `npm start` (or `.\run.bat`)
+- Windows launch: `.\run.bat` (or `npm start`)
+- Linux launch: `./run.sh` (or `npm start`)
 - test: `npm test` (runs ladder tests across L1 import, L2 units, L3 module, L4 e2e)
-- build / package: `npm run package`
+- capture live proof: `node tools/capture_proof.js`
 
 ## Limits
 
