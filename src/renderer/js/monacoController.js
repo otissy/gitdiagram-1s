@@ -194,8 +194,52 @@ class MonacoController {
       this.sbLang.textContent = tab.language.charAt(0).toUpperCase() + tab.language.slice(1);
     }
 
+    // Update symbols outline controller
+    if (window.outlineController && !tab.isBinary) {
+      window.outlineController.loadSymbols(tab.path, tab.relativePath);
+    }
+
+    // If diagram is currently in symbols mode, update symbol view for this file
+    if (window.diagramRenderer && window.diagramRenderer.currentMode === 'sym' && !tab.isBinary) {
+      window.diagramRenderer.setActiveTargetFile(tab.path, tab.relativePath);
+    }
+
     // Trigger layout
     setTimeout(() => this.editor.layout(), 20);
+  }
+
+  /**
+   * Reveal and highlight a line in Monaco editor
+   */
+  revealLine(lineNumber, column = 1) {
+    if (!this.editor || !lineNumber) return;
+    this.editor.revealLineInCenter(lineNumber);
+    this.editor.setPosition({ lineNumber, column });
+    const model = this.editor.getModel();
+    if (model) {
+      this.editor.setSelection({
+        startLineNumber: lineNumber,
+        startColumn: 1,
+        endLineNumber: lineNumber,
+        endColumn: model.getLineMaxColumn(lineNumber)
+      });
+    }
+    this.editor.focus();
+  }
+
+  /**
+   * Open file and immediately jump to and highlight symbol definition
+   */
+  async openFileAndReveal(filePath, relativePath, lineNumber, symbolName = null) {
+    await this.openFile(filePath, relativePath);
+    if (lineNumber) {
+      setTimeout(() => {
+        this.revealLine(lineNumber);
+        if (symbolName) {
+          this.updateBreadcrumbs(`${relativePath} › ${symbolName}`);
+        }
+      }, 50);
+    }
   }
 
   /**

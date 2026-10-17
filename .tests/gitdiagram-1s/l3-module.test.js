@@ -54,3 +54,24 @@ test('L3: codebase architecture diagram and AST links generation', async () => {
   assert.ok(mermaid.startsWith('graph TD'));
   assert.ok(mermaid.includes('subgraph'));
 });
+
+test('L3: deep symbol and call graph generation across repository files', async () => {
+  const root = path.resolve(__dirname, '../..');
+  const scanResult = await fileService.scanDirectory(root);
+
+  // Generate symbol graph for symbolService itself
+  const symGraph = await diagramService.generateSymbolGraph(root, 'src/main/services/symbolService.js', scanResult.files);
+
+  assert.ok(Array.isArray(symGraph.nodes));
+  assert.ok(Array.isArray(symGraph.links));
+  assert.ok(symGraph.stats);
+  assert.ok(symGraph.stats.totalSymbols > 0);
+
+  // Verify functions like extractSymbolsFromContent are present
+  const fnNode = symGraph.nodes.find(n => n.name === 'extractSymbolsFromContent');
+  assert.ok(fnNode, 'Should find extractSymbolsFromContent function node');
+  assert.equal(fnNode.kind, 'function');
+  assert.ok(fnNode.line > 0);
+  assert.equal(fnNode.relativePath, 'src/main/services/symbolService.js');
+});
+

@@ -4,7 +4,7 @@ The map of the ground. Read before any task; update at the end of every task.
 
 ## Current state
 
-GitDiagram 1s is a Windows and Linux desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It supports opening any local folder or Git repository, as well as typing/pasting any remote GitHub repository (`owner/repo` or URL) for public repos and logging in with a GitHub Personal Access Token to explore private repositories.
+GitDiagram 1s is a Windows and Linux desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It supports opening any local folder or Git repository, as well as typing/pasting any remote GitHub repository (`owner/repo` or URL) for public repos and logging in with a GitHub Personal Access Token to explore private repositories. It includes deep symbol-level exploration (classes, methods, functions, variables, constants, interfaces), call hierarchy visualization, and instant click-to-jump line navigation in Monaco Editor.
 
 ## How to run and test
 
@@ -25,9 +25,11 @@ GitDiagram 1s is a Windows and Linux desktop application combining the fast, com
 ## Sources of truth
 
 - File scanner & Git parser → `src/main/services/gitService.js` and `src/main/services/fileService.js`
+- Symbol & call hierarchy extractor → `src/main/services/symbolService.js`
 - Diagram extraction & AST dependency resolver → `src/main/services/diagramService.js`
 - GitHub remote cloning & authentication → `src/main/services/githubRemoteService.js`
 - IPC contracts → `src/preload/preload.js`
+- Symbols & Outline Controller → `src/renderer/js/outlineController.js`
 - Frontend UI & Monaco/Canvas controller → `src/renderer/`
 
 ## Known problems

@@ -20,6 +20,7 @@ class App {
     this.sidebarExplorer = document.getElementById('sidebar-content-explorer');
     this.sidebarGit = document.getElementById('sidebar-content-git');
     this.sidebarCommits = document.getElementById('sidebar-content-commits');
+    this.sidebarOutline = document.getElementById('sidebar-content-outline');
 
     // Panes
     this.codePane = document.getElementById('code-pane');
@@ -79,25 +80,35 @@ class App {
     const actExplorer = document.getElementById('act-explorer');
     const actGit = document.getElementById('act-git');
     const actCommits = document.getElementById('act-commits');
+    const actOutline = document.getElementById('act-outline');
     const actRefresh = document.getElementById('act-refresh');
 
-    const setSidebarView = (activeBtn, title, explorerDisp, gitDisp, commitsDisp) => {
+    const setSidebarView = (activeBtn, title, explorerDisp, gitDisp, commitsDisp, outlineDisp = 'none') => {
       document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
       activeBtn.classList.add('active');
       this.sidebarTitle.textContent = title;
       this.sidebarExplorer.style.display = explorerDisp;
       this.sidebarGit.style.display = gitDisp;
       this.sidebarCommits.style.display = commitsDisp;
+      if (this.sidebarOutline) this.sidebarOutline.style.display = outlineDisp;
     };
 
-    actExplorer.onclick = () => setSidebarView(actExplorer, 'Explorer', 'block', 'none', 'none');
-    actGit.onclick = () => setSidebarView(actGit, 'Source Control', 'none', 'block', 'none');
+    actExplorer.onclick = () => setSidebarView(actExplorer, 'Explorer', 'block', 'none', 'none', 'none');
+    actGit.onclick = () => setSidebarView(actGit, 'Source Control', 'none', 'block', 'none', 'none');
     actCommits.onclick = () => {
-      setSidebarView(actCommits, 'Commit History', 'none', 'none', 'block');
+      setSidebarView(actCommits, 'Commit History', 'none', 'none', 'block', 'none');
       // Also switch diagram to Git DAG!
       const gitModeBtn = document.getElementById('diag-mode-git');
       if (gitModeBtn) gitModeBtn.click();
     };
+    if (actOutline) {
+      actOutline.onclick = () => {
+        setSidebarView(actOutline, 'Symbols & Outline', 'none', 'none', 'none', 'block');
+        if (window.monacoController && window.monacoController.activeTab) {
+          window.outlineController.loadSymbols(window.monacoController.activeTab.path, window.monacoController.activeTab.relativePath);
+        }
+      };
+    }
     actRefresh.onclick = () => this.reloadRepository();
 
     // View Mode Switcher: Split / Code / Diagram
@@ -366,7 +377,7 @@ class App {
 
     // 4. Generate & Render Architecture Diagram
     const diagramData = await window.api.generateDiagram(folderPath, this.allFiles);
-    window.diagramRenderer.setData(diagramData, gitInfo ? gitInfo.logInfo : null);
+    window.diagramRenderer.setData(diagramData, gitInfo ? gitInfo.logInfo : null, folderPath, this.allFiles);
 
     // 5. Auto-open primary entry point in Monaco Editor
     await window.monacoController.init();

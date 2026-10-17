@@ -11,6 +11,7 @@ app.disableHardwareAcceleration();
 const fileService = require('../src/main/services/fileService');
 const gitService = require('../src/main/services/gitService');
 const diagramService = require('../src/main/services/diagramService');
+const symbolService = require('../src/main/services/symbolService');
 const { ipcMain } = require('electron');
 
 // Register IPC handlers for test run
@@ -27,6 +28,8 @@ ipcMain.handle('git:switchBranch', async (e, p, b) => await gitService.switchBra
 ipcMain.handle('git:getLog', async (e, p, m) => await gitService.getGitLog(p, m));
 ipcMain.handle('git:getDiff', async (e, p, f, a, b) => await gitService.getGitDiff(p, f, a, b));
 ipcMain.handle('diagram:generate', async (e, p, f, o) => await diagramService.generateDiagram(p, f, o));
+ipcMain.handle('diagram:generateSymbols', async (e, p, t, f) => await diagramService.generateSymbolGraph(p, t, f));
+ipcMain.handle('file:getSymbols', async (e, p) => await symbolService.extractFileSymbols(p));
 ipcMain.handle('diagram:toMermaid', (e, d) => diagramService.toMermaid(d));
 ipcMain.handle('dialog:saveExport', async () => ({ success: true }));
 ipcMain.handle('github:setToken', () => ({ success: true, user: { login: 'octocat' } }));
@@ -65,14 +68,38 @@ app.whenReady().then(async () => {
 
   await win.loadFile(path.join(__dirname, '../src/renderer/index.html'));
 
-  // Trigger opening current repository
+  // 1. Open current repository
   await win.webContents.executeJavaScript(`
     (async () => {
       await window.app.openRepository(${JSON.stringify(process.cwd().replace(/\\/g, '/'))});
     })();
   `);
 
-  // Wait 4 seconds for Monaco Editor and SVG Diagram animations to settle
+  await new Promise(r => setTimeout(r, 2000));
+
+  // 2. Open symbolService.js, jump directly to extractSymbolsFromContent definition,
+  //    switch sidebar to Outline / Symbols view, and switch Diagram to Symbols mode!
+  await win.webContents.executeJavaScript(`
+    (async () => {
+      try {
+        const symFile = ${JSON.stringify(path.join(process.cwd(), 'src/main/services/symbolService.js').replace(/\\/g, '/'))};
+        await window.monacoController.openFileAndReveal(symFile, 'src/main/services/symbolService.js', 17, 'extractSymbolsFromContent');
+
+        // Switch Sidebar to Symbols & Outline view
+        const actOutline = document.getElementById('act-outline');
+        if (actOutline) actOutline.click();
+
+        // Switch Diagram to Symbols mode
+        console.log('Switching diagram mode to sym...');
+        window.diagramRenderer.setMode('sym');
+        console.log('diagramRenderer currentMode is:', window.diagramRenderer.currentMode);
+      } catch (err) {
+        console.error('ERROR in step 2:', err);
+      }
+    })();
+  `);
+
+  // Wait 4 seconds for Monaco line reveal, Outline tree render, and D3 Symbol graph force layout to stabilize
   await new Promise(r => setTimeout(r, 4000));
 
   const image = await win.webContents.capturePage();
@@ -82,3 +109,4 @@ app.whenReady().then(async () => {
 
   app.quit();
 });
+

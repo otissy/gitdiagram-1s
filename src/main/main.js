@@ -5,6 +5,7 @@ const fs = require('fs');
 const fileService = require('./services/fileService');
 const gitService = require('./services/gitService');
 const diagramService = require('./services/diagramService');
+const symbolService = require('./services/symbolService');
 const { GitHubRemoteService } = require('./services/githubRemoteService');
 
 let githubRemoteService = null;
@@ -190,6 +191,14 @@ function registerIpcHandlers() {
 
   ipcMain.handle('diagram:toMermaid', (event, diagramData) => {
     return diagramService.toMermaid(diagramData);
+  });
+
+  ipcMain.handle('diagram:generateSymbols', async (event, folderPath, targetFile, files) => {
+    return await diagramService.generateSymbolGraph(folderPath, targetFile, files);
+  });
+
+  ipcMain.handle('file:getSymbols', async (event, filePath) => {
+    return await symbolService.extractFileSymbols(filePath);
   });
 
   // Export File

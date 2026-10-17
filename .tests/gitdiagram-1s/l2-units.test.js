@@ -162,3 +162,88 @@ test('L2: run.ps1 is strictly prohibited and must not exist in repository', () =
   assert.equal(fs.existsSync(runBatPath), true, 'run.bat must exist');
   assert.equal(fs.existsSync(runShPath), true, 'run.sh must exist');
 });
+
+test('L2: symbolService extracts deep symbols (classes, methods, functions, vars) in JS/TS', () => {
+  const symbolService = require('../../src/main/services/symbolService');
+  const jsSample = `
+    export interface UserProfile {
+      id: string;
+      name: string;
+    }
+
+    export const MAX_RETRY = 3;
+    let requestCount = 0;
+
+    export class ApiClient extends BaseClient {
+      constructor(baseUrl) {
+        super(baseUrl);
+      }
+
+      async fetchData(endpoint) {
+        helperFormat(endpoint);
+        return this.sendRequest(endpoint);
+      }
+
+      sendRequest(url) {
+        return url;
+      }
+    }
+
+    function helperFormat(str) {
+      return str.trim();
+    }
+  `;
+
+  const symbols = symbolService.extractSymbolsFromContent(jsSample, '.ts', 'src/api.ts');
+  const kinds = symbols.map(s => s.kind);
+
+  assert.ok(kinds.includes('interface'), 'Should extract interface');
+  assert.ok(kinds.includes('constant'), 'Should extract constant');
+  assert.ok(kinds.includes('variable'), 'Should extract variable');
+  assert.ok(kinds.includes('class'), 'Should extract class');
+  assert.ok(kinds.includes('method'), 'Should extract method');
+  assert.ok(kinds.includes('function'), 'Should extract function');
+
+  const clientClass = symbols.find(s => s.name === 'ApiClient');
+  assert.ok(clientClass);
+  assert.equal(clientClass.superClass, 'BaseClient');
+
+  const methods = symbols.filter(s => s.kind === 'method');
+  assert.ok(methods.some(m => m.shortName === 'fetchData'));
+  assert.ok(methods.some(m => m.shortName === 'constructor'));
+
+  // Call detection
+  const calls = symbolService.extractSymbolCalls(jsSample, symbols);
+  assert.ok(calls.some(c => c.source === 'ApiClient.fetchData' && c.target === 'helperFormat'));
+});
+
+test('L2: symbolService extracts symbols and call graph in Python', () => {
+  const symbolService = require('../../src/main/services/symbolService');
+  const pySample = `
+API_VERSION = "v2"
+timeout = 30
+
+class Calculator:
+    def add(self, a, b):
+        return a + b
+
+    def compute(self, x, y):
+        validate(x)
+        return self.add(x, y)
+
+def validate(val):
+    if val < 0:
+        raise ValueError("negative")
+  `;
+
+  const symbols = symbolService.extractSymbolsFromContent(pySample, '.py', 'calc.py');
+  assert.ok(symbols.some(s => s.name === 'API_VERSION' && s.kind === 'constant'));
+  assert.ok(symbols.some(s => s.name === 'timeout' && s.kind === 'variable'));
+  assert.ok(symbols.some(s => s.name === 'Calculator' && s.kind === 'class'));
+  assert.ok(symbols.some(s => s.name === 'Calculator.add' && s.kind === 'method'));
+  assert.ok(symbols.some(s => s.name === 'validate' && s.kind === 'function'));
+
+  const calls = symbolService.extractSymbolCalls(pySample, symbols);
+  assert.ok(calls.some(c => c.source === 'Calculator.compute' && c.target === 'validate'));
+});
+

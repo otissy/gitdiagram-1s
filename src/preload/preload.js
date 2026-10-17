@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Diagram & Visualizations
   generateDiagram: (folderPath, files, options) => ipcRenderer.invoke('diagram:generate', folderPath, files, options),
+  generateSymbolDiagram: (folderPath, targetFile, files) => ipcRenderer.invoke('diagram:generateSymbols', folderPath, targetFile, files),
+  getFileSymbols: (filePath) => ipcRenderer.invoke('file:getSymbols', filePath),
   toMermaid: (diagramData) => ipcRenderer.invoke('diagram:toMermaid', diagramData),
   saveExportFile: (defaultName, content, type) => ipcRenderer.invoke('dialog:saveExport', defaultName, content, type),
 

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const symbolService = require('./symbolService');
 
 // Classify file role by name and path
 function classifyFileRole(filePath) {
@@ -317,8 +318,108 @@ function toMermaid(diagramData, mode = 'architecture') {
   return lines.join('\n');
 }
 
+/**
+ * Generate in-depth Symbol & Call Graph (Classes, Functions, Methods, Variables, Interfaces)
+ */
+async function generateSymbolGraph(repoPath, targetFile = null, flatFiles = []) {
+  const nodes = [];
+  const links = [];
+  const symbolMap = new Map();
+
+  let filesToProcess = [];
+  if (targetFile) {
+    const full = path.isAbsolute(targetFile) ? targetFile : path.join(repoPath, targetFile);
+    filesToProcess = [{
+      path: full,
+      relativePath: path.relative(repoPath, full).replace(/\\/g, '/')
+    }];
+  } else {
+    // Process top 30 code files
+    filesToProcess = flatFiles
+      .filter(f => !f.isBinary && ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.cpp', '.c', '.cs'].includes(f.extension))
+      .slice(0, 30);
+  }
+
+  for (const file of filesToProcess) {
+    try {
+      const content = await fs.promises.readFile(file.path, 'utf8');
+      const ext = path.extname(file.path);
+      const symbols = symbolService.extractSymbolsFromContent(content, ext, file.path);
+      const calls = symbolService.extractSymbolCalls(content, symbols);
+
+      for (const sym of symbols) {
+        const id = `${file.relativePath}::${sym.name}`;
+        const nodeObj = {
+          id,
+          name: sym.name,
+          shortName: sym.shortName || sym.name,
+          kind: sym.kind, // 'class' | 'function' | 'method' | 'variable' | 'constant' | 'interface'
+          line: sym.line,
+          params: sym.params || '',
+          superClass: sym.superClass || null,
+          filePath: file.path,
+          relativePath: file.relativePath,
+          parentSymbol: sym.parentSymbol || null,
+          exported: !!sym.exported
+        };
+        nodes.push(nodeObj);
+        symbolMap.set(id, nodeObj);
+      }
+
+      // Symbol calls within the file
+      for (const call of calls) {
+        const srcId = `${file.relativePath}::${call.source}`;
+        const tgtId = `${file.relativePath}::${call.target}`;
+        links.push({
+          source: srcId,
+          target: tgtId,
+          type: 'calls',
+          line: call.line
+        });
+      }
+
+      // Hierarchy containment: class contains method
+      for (const sym of symbols) {
+        if (sym.parentSymbol) {
+          const parentId = `${file.relativePath}::${sym.parentSymbol}`;
+          const childId = `${file.relativePath}::${sym.name}`;
+          links.push({
+            source: parentId,
+            target: childId,
+            type: 'contains'
+          });
+        }
+        if (sym.superClass) {
+          const superId = `${file.relativePath}::${sym.superClass}`;
+          links.push({
+            source: `${file.relativePath}::${sym.name}`,
+            target: superId,
+            type: 'inherits'
+          });
+        }
+      }
+    } catch (e) {
+      // skip read error
+    }
+  }
+
+  return {
+    nodes,
+    links,
+    stats: {
+      totalSymbols: nodes.length,
+      classes: nodes.filter(n => n.kind === 'class').length,
+      functions: nodes.filter(n => n.kind === 'function' || n.kind === 'method').length,
+      variables: nodes.filter(n => n.kind === 'variable' || n.kind === 'constant').length,
+      interfaces: nodes.filter(n => n.kind === 'interface').length,
+      calls: links.filter(l => l.type === 'calls').length
+    }
+  };
+}
+
 module.exports = {
   generateDiagram,
+  generateSymbolGraph,
   classifyFileRole,
   extractImportSpecifiers,
   resolveImportToFile,
