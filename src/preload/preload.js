@@ -59,6 +59,43 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
+  // VS Code Extensions Marketplace & Manager
+  extensions: {
+    search: (query, page) => ipcRenderer.invoke('extensions:search', query, page),
+    installMarketplace: (id) => ipcRenderer.invoke('extensions:installMarketplace', id),
+    installVsix: () => ipcRenderer.invoke('extensions:installVsix'),
+    getInstalled: () => ipcRenderer.invoke('extensions:getInstalled'),
+    uninstall: (id) => ipcRenderer.invoke('extensions:uninstall', id),
+    toggle: (id, enabled) => ipcRenderer.invoke('extensions:toggle', id, enabled),
+    getThemes: () => ipcRenderer.invoke('extensions:getThemes'),
+    setTheme: (themeId) => ipcRenderer.invoke('extensions:setTheme', themeId),
+    getSnippets: () => ipcRenderer.invoke('extensions:getSnippets')
+  },
+
+  // AI Agent & Existing AI Subscriptions (Antigravity, Anthropic, OpenAI, Gemini, Ollama)
+  ai: {
+    getConfig: () => ipcRenderer.invoke('ai:getConfig'),
+    saveConfig: (config) => ipcRenderer.invoke('ai:saveConfig', config),
+    testConnection: (provider) => ipcRenderer.invoke('ai:testConnection', provider),
+    chat: (prompt, context) => ipcRenderer.invoke('ai:chat', prompt, context),
+    abort: () => ipcRenderer.invoke('ai:abort'),
+    onChunk: (callback) => {
+      const handler = (event, chunk) => callback(chunk);
+      ipcRenderer.on('ai:chunk', handler);
+      return () => ipcRenderer.removeListener('ai:chunk', handler);
+    },
+    onDone: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('ai:done', handler);
+      return () => ipcRenderer.removeListener('ai:done', handler);
+    },
+    onError: (callback) => {
+      const handler = (event, err) => callback(err);
+      ipcRenderer.on('ai:error', handler);
+      return () => ipcRenderer.removeListener('ai:error', handler);
+    }
+  },
+
   // Window Controls
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),

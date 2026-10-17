@@ -41,6 +41,19 @@
   - Connect with GitHub PAT to clone or view public and private repositories.
   - View repo ownership badge ("👑 You own this repository"), branches, open pull requests, and open issues.
 
+- 🧩 **VS Code Extensions & Themes Engine**
+  - **Open VSX Marketplace**: Search and install extensions directly from Open VSX in one click.
+  - **Local VSIX Support**: Install any offline `.vsix` file with built-in zero-dependency PKZIP extraction and zip-slip safety verification.
+  - **Live Theme Styler**: Instantly registers VS Code color themes (Dracula, GitHub Theme, One Dark, Nord, etc.) with Monaco Editor syntax token rules and live-updates Vision IDE workbench CSS variables.
+  - **Snippets**: Automatically registers extension-contributed code snippets for smart autocomplete.
+
+- 🤖 **AI Agent & Subscriptions Engine**
+  - **Google Antigravity Integration**: Deep native integration with Google's Antigravity agent ecosystem ([github.com/google-antigravity](https://github.com/google-antigravity)), auto-detecting the local `agy` CLI (`antigravity-cli`) for advanced reasoning turns.
+  - **Bring-Your-Own-Subscription**: Stream with your existing API subscriptions for Anthropic Claude (3.5 / 3.7 Sonnet), OpenAI (GPT-4o, o1, o3-mini), Google Gemini (1.5 Pro/Flash), and OpenRouter.
+  - **Local Offline Models**: Native support for Ollama (`http://localhost:11434`) and LM Studio (`http://localhost:1234/v1`).
+  - **Codebase-Aware Context**: Ingests active file buffer, highlighted code selections, cursor locations, and high-level architectural summaries.
+  - **Interactive Stream & Code Insertion**: Real-time token streaming with 1-click code block copy and direct cursor insertion.
+
 - 🔒 **Security Hardened & Offline First**
   - Strict path traversal prevention and null-byte injection blocking.
   - Electron context isolation with strictly typed IPC channels (`nodeIntegration: false`, `contextIsolation: true`).
@@ -74,6 +87,8 @@ npm start
 | `Ctrl+Shift+P` / `F1` | Open Command Palette (IDE Mode) |
 | `Ctrl+Shift+E` | Focus File Explorer |
 | `Ctrl+Shift+G` | Focus Git Source Control & Diffs |
+| `Ctrl+Shift+X` | Open VS Code Extensions Marketplace |
+| `Ctrl+Shift+I` | Open AI Agent Chat & Subscriptions |
 
 ---
 

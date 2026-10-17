@@ -33,9 +33,46 @@ By default, Vision IDE runs in **Lightweight Viewer Mode** (<75MB RAM idle, inst
 - Symbol & call hierarchy extractor → `src/main/services/symbolService.js`
 - Diagram extraction & AST dependency resolver → `src/main/services/diagramService.js`
 - GitHub remote cloning & authentication → `src/main/services/githubRemoteService.js`
+- Zero-dependency VSIX / PKZIP buffer extractor → `src/main/services/zipService.js`
+- Open VSX extension marketplace & theme parser → `src/main/services/extensionService.js`
+- Multi-provider AI Agent (Google Antigravity, Claude, OpenAI, Gemini, Ollama, LM Studio) → `src/main/services/aiService.js`
+- Extension Controller & Theme Picker → `src/renderer/js/extensionController.js`
+- AI Agent Controller & Streaming Chat → `src/renderer/js/aiController.js`
 - IPC contracts → `src/preload/preload.js`
 - Symbols & Outline Controller → `src/renderer/js/outlineController.js`
 - Frontend UI & Monaco/Canvas controller → `src/renderer/`
+
+## VS Code Extensions & Themes System
+
+1. **Open VSX Marketplace Integration:**
+   - Search the public Open VSX registry (`open-vsx.org/api/`) directly from the Extensions sidebar tab.
+   - 1-click install downloads and unzips extensions directly into `<userData>/extensions`.
+2. **Local VSIX Package Installer:**
+   - Native `.vsix` file selector allows installing any downloaded extension file offline.
+   - Built with `ZipService`, a pure Node.js PKZIP extractor using `zlib.inflateRawSync` with zip-slip directory traversal guards (`path.resolve` check against destination directory).
+3. **Dynamic Theme Engine:**
+   - Extracts VS Code color theme files (`contributes.themes`), parses JSON with comments and trailing commas (JSONC), and dynamically registers them with `monaco.editor.defineTheme`.
+   - Automatically remaps editor and workbench tokens (`editor.background`, `editor.foreground`, `sideBar.background`, `activityBar.background`, etc.) to Vision IDE CSS custom properties for a cohesive interface look.
+4. **Code Snippets:**
+   - Registers extension-contributed snippets (`contributes.snippets`) with Monaco's completion item provider.
+
+## AI Agent & Subscriptions Engine
+
+1. **Google Antigravity Integration:**
+   - Native orchestration using the Google Antigravity ecosystem ([github.com/google-antigravity](https://github.com/google-antigravity)), specifically integrating with the Antigravity CLI harness (`agy.exe` from `antigravity-cli`) and Python SDK patterns (`antigravity-sdk-python`).
+   - Auto-detects local `agy.exe` installation and executes reasoning turns with real-time output streaming.
+2. **Bring-Your-Own-Subscription Multi-Provider Support:**
+   - **Anthropic:** Server-sent events streaming via `/v1/messages` (Claude 3.5 Sonnet, 3.7 Sonnet).
+   - **OpenAI:** Streaming via `/v1/chat/completions` (GPT-4o, o1, o3-mini).
+   - **Google Gemini:** Direct streaming with Google AI Studio API keys (Gemini 1.5 Pro, Flash).
+   - **OpenRouter:** Unified access to DeepSeek, Llama, and 100+ hosted models.
+   - **Local AI:** Seamless local LLM inference via Ollama (`http://localhost:11434`) and LM Studio (`http://localhost:1234/v1`).
+3. **Codebase-Aware Prompt Context:**
+   - AI queries automatically ingest active file path, full or partial file contents, highlighted code selections, language IDs, and repository architecture summaries.
+4. **Interactive Chat & Code Insertion:**
+   - Real-time markdown streaming, syntax highlighted code blocks with one-click "Copy" and "Insert at Cursor" into Monaco Editor.
+5. **Credential Security:**
+   - API keys are stored exclusively in local `<userData>/ai-settings.json` and are masked before being exposed across IPC to the renderer.
 
 ## Security Architecture & Hardening
 

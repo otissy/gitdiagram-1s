@@ -60,3 +60,28 @@ test('L1: terminalService loads without error and exposes lifecycle methods', ()
   assert.equal(typeof terminalService.killAll, 'function');
   assert.equal(typeof terminalService.getDefaultShell, 'function');
 });
+
+test('L1: zipService loads without error', () => {
+  const ZipService = require('../../src/main/services/zipService');
+  assert.equal(typeof ZipService.extractZip, 'function');
+  assert.equal(typeof ZipService.parseZip, 'function');
+});
+
+test('L1: extensionService loads without error and exposes extension APIs', () => {
+  const ExtensionService = require('../../src/main/services/extensionService');
+  const instance = new ExtensionService();
+  assert.equal(typeof instance.searchMarketplace, 'function');
+  assert.equal(typeof instance.installFromVsix, 'function');
+  assert.equal(typeof instance.getInstalledExtensions, 'function');
+  assert.equal(typeof instance.getAvailableThemes, 'function');
+  assert.equal(typeof instance.getMonacoThemeDefinition, 'function');
+});
+
+test('L1: aiService loads without error and exposes multi-provider APIs', () => {
+  const AiService = require('../../src/main/services/aiService');
+  const instance = new AiService();
+  assert.equal(typeof instance.saveConfig, 'function');
+  assert.equal(typeof instance.getConfigSafe, 'function');
+  assert.equal(typeof instance.testConnection, 'function');
+  assert.equal(typeof instance.streamChat, 'function');
+});

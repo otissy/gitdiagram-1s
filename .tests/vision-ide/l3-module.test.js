@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const fs = require('fs');
 const fileService = require('../../src/main/services/fileService');
 const gitService = require('../../src/main/services/gitService');
 const diagramService = require('../../src/main/services/diagramService');
@@ -81,5 +82,109 @@ test('L3: deep symbol and call graph generation across repository files', async 
   assert.equal(fnNode.kind, 'function');
   assert.ok(fnNode.line > 0);
   assert.equal(fnNode.relativePath, 'src/main/services/symbolService.js');
+});
+
+test('L3: extensionService manages extension lifecycle and theme persistence', async () => {
+  const ExtensionService = require('../../src/main/services/extensionService');
+  const service = new ExtensionService();
+  const tmpDir = path.resolve(__dirname, '../fixtures/test-ext-suite');
+  if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  service.init(tmpDir);
+
+  // Verify default built-in themes exist
+  const defaultThemes = service.getAvailableThemes();
+  assert.ok(defaultThemes.some(t => t.id === 'github-dark-custom'));
+  assert.ok(defaultThemes.some(t => t.id === 'vs-dark'));
+  assert.ok(defaultThemes.some(t => t.id === 'vs'));
+
+  // Install a mock theme extension from buffer
+  function makeZip(name, data) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const dataBuf = Buffer.from(data, 'utf8');
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt32LE(dataBuf.length, 18);
+    header.writeUInt32LE(dataBuf.length, 22);
+    header.writeUInt16LE(nameBuf.length, 26);
+    return Buffer.concat([header, nameBuf, dataBuf]);
+  }
+
+  const pkgJson = JSON.stringify({
+    name: 'dracula-theme',
+    displayName: 'Dracula Official',
+    publisher: 'dracula-theme',
+    version: '2.24.2',
+    contributes: {
+      themes: [{ id: 'dracula', label: 'Dracula', uiTheme: 'vs-dark', path: './theme/dracula.json' }]
+    }
+  });
+
+  const themeJson = JSON.stringify({
+    name: 'Dracula',
+    type: 'dark',
+    colors: { 'editor.background': '#282a36', 'editor.foreground': '#f8f8f2' }
+  });
+
+  const vsixBuffer = Buffer.concat([
+    makeZip('extension/package.json', pkgJson),
+    makeZip('extension/theme/dracula.json', themeJson)
+  ]);
+
+  const installResult = service.installFromBuffer(vsixBuffer, 'dracula');
+  assert.equal(installResult.success, true);
+  assert.equal(installResult.extension.id, 'dracula-theme.dracula-theme');
+
+  // Verify installed list
+  const installed = service.getInstalledExtensions();
+  assert.equal(installed.length, 1);
+  assert.equal(installed[0].name, 'dracula-theme');
+
+  // Verify theme definition
+  const themes = service.getAvailableThemes();
+  assert.ok(themes.some(t => t.id.includes('dracula')));
+
+  const themeDef = service.setActiveTheme('dracula-theme.dracula-theme:dracula');
+  assert.ok(themeDef);
+  assert.equal(themeDef.uiColors.bgPrimary, '#282a36');
+
+  // Verify toggle disable/enable
+  service.toggleExtension('dracula-theme.dracula-theme', false);
+  const themesDisabled = service.getAvailableThemes();
+  assert.equal(themesDisabled.some(t => t.id.includes('dracula')), false, 'Disabled extension themes should not be listed');
+
+  // Uninstall
+  const uninstallRes = service.uninstallExtension('dracula-theme.dracula-theme');
+  assert.equal(uninstallRes.success, true);
+  assert.equal(service.getInstalledExtensions().length, 0);
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('L3: aiService tests connection and formats context-rich prompts', async () => {
+  const AiService = require('../../src/main/services/aiService');
+  const service = new AiService();
+  const tmpSettings = path.resolve(__dirname, '../fixtures/test-ai-l3.json');
+  if (fs.existsSync(tmpSettings)) fs.rmSync(tmpSettings, { force: true });
+
+  service.init(tmpSettings);
+
+  // Test missing provider key rejection
+  const badConn = await service.testConnection('anthropic');
+  assert.equal(badConn.success, false);
+  assert.ok(badConn.error.includes('Missing API key'));
+
+  // If agy.exe is present on this machine, test Antigravity connection
+  if (service.config.antigravityAvailable) {
+    const agConn = await service.testConnection('antigravity');
+    assert.equal(agConn.success, true);
+    assert.ok(agConn.message.includes('Antigravity'));
+  }
+
+  if (fs.existsSync(tmpSettings)) fs.rmSync(tmpSettings, { force: true });
 });
 

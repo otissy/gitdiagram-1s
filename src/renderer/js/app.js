@@ -22,6 +22,8 @@ class App {
     this.sidebarCommits = document.getElementById('sidebar-content-commits');
     this.sidebarOutline = document.getElementById('sidebar-content-outline');
     this.sidebarGithub = document.getElementById('sidebar-content-github');
+    this.sidebarExtensions = document.getElementById('sidebar-content-extensions');
+    this.sidebarAi = document.getElementById('sidebar-content-ai');
 
     // Panes
     this.codePane = document.getElementById('code-pane');
@@ -84,30 +86,55 @@ class App {
     const actCommits = document.getElementById('act-commits');
     const actOutline = document.getElementById('act-outline');
     const actGithub = document.getElementById('act-github');
+    const actExtensions = document.getElementById('act-extensions');
+    const actAi = document.getElementById('act-ai');
     const actRefresh = document.getElementById('act-refresh');
 
-    const setSidebarView = (activeBtn, title, explorerDisp, gitDisp, commitsDisp, outlineDisp = 'none', githubDisp = 'none') => {
+    const setSidebarView = (activeBtn, title, panelKey) => {
       document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
       if (activeBtn) activeBtn.classList.add('active');
       this.sidebarTitle.textContent = title;
-      this.sidebarExplorer.style.display = explorerDisp;
-      this.sidebarGit.style.display = gitDisp;
-      this.sidebarCommits.style.display = commitsDisp;
-      if (this.sidebarOutline) this.sidebarOutline.style.display = outlineDisp;
-      if (this.sidebarGithub) this.sidebarGithub.style.display = githubDisp;
+
+      const panels = {
+        explorer: this.sidebarExplorer,
+        git: this.sidebarGit,
+        commits: this.sidebarCommits,
+        outline: this.sidebarOutline,
+        github: this.sidebarGithub,
+        extensions: this.sidebarExtensions,
+        ai: this.sidebarAi
+      };
+
+      for (const [key, el] of Object.entries(panels)) {
+        if (el) {
+          el.style.display = (key === panelKey) ? (key === 'ai' || key === 'extensions' ? 'flex' : 'block') : 'none';
+        }
+      }
+
+      // Hide file tree filter input when in other panels like AI or Extensions
+      const filterBar = document.querySelector('.sidebar-filter');
+      if (filterBar) {
+        filterBar.style.display = (panelKey === 'explorer') ? 'block' : 'none';
+      }
+
+      // Hide collapse button when not in explorer
+      const collapseBtn = document.getElementById('btn-sidebar-collapse');
+      if (collapseBtn) {
+        collapseBtn.style.display = (panelKey === 'explorer') ? 'inline-flex' : 'none';
+      }
     };
 
-    actExplorer.onclick = () => setSidebarView(actExplorer, 'Explorer', 'block', 'none', 'none', 'none', 'none');
-    actGit.onclick = () => setSidebarView(actGit, 'Source Control', 'none', 'block', 'none', 'none', 'none');
+    actExplorer.onclick = () => setSidebarView(actExplorer, 'Explorer', 'explorer');
+    actGit.onclick = () => setSidebarView(actGit, 'Source Control', 'git');
     actCommits.onclick = () => {
-      setSidebarView(actCommits, 'Commit History', 'none', 'none', 'block', 'none', 'none');
+      setSidebarView(actCommits, 'Commit History', 'commits');
       // Also switch diagram to Git DAG!
       const gitModeBtn = document.getElementById('diag-mode-git');
       if (gitModeBtn) gitModeBtn.click();
     };
     if (actOutline) {
       actOutline.onclick = () => {
-        setSidebarView(actOutline, 'Symbols & Outline', 'none', 'none', 'none', 'block', 'none');
+        setSidebarView(actOutline, 'Symbols & Outline', 'outline');
         if (window.monacoController && window.monacoController.activeTab) {
           window.outlineController.loadSymbols(window.monacoController.activeTab.path, window.monacoController.activeTab.relativePath);
         }
@@ -115,8 +142,20 @@ class App {
     }
     if (actGithub) {
       actGithub.onclick = () => {
-        setSidebarView(actGithub, 'GitHub Remote', 'none', 'none', 'none', 'none', 'block');
+        setSidebarView(actGithub, 'GitHub Remote', 'github');
         if (window.githubController) window.githubController.refresh();
+      };
+    }
+    if (actExtensions) {
+      actExtensions.onclick = () => {
+        setSidebarView(actExtensions, 'Extensions', 'extensions');
+        if (window.extensionController) window.extensionController.init();
+      };
+    }
+    if (actAi) {
+      actAi.onclick = () => {
+        setSidebarView(actAi, 'AI Agent', 'ai');
+        if (window.aiController) window.aiController.init();
       };
     }
     actRefresh.onclick = () => this.reloadRepository();
@@ -127,6 +166,8 @@ class App {
       else if (tab === 'commits') actCommits.click();
       else if (tab === 'outline' && actOutline) actOutline.click();
       else if (tab === 'github' && actGithub) actGithub.click();
+      else if (tab === 'extensions' && actExtensions) actExtensions.click();
+      else if (tab === 'ai' && actAi) actAi.click();
     };
 
     // View Mode Switcher: Split / Code / Diagram
@@ -329,6 +370,16 @@ class App {
         e.preventDefault();
         this.sidebar.style.display = this.sidebar.style.display === 'none' ? 'flex' : 'none';
         if (window.monacoController) window.monacoController.layout();
+      }
+      // Ctrl+Shift+X: Extensions Marketplace & Manager
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        this.switchSidebarTab('extensions');
+      }
+      // Ctrl+Shift+I: AI Agent
+      if (e.ctrlKey && e.shiftKey && (e.key.toLowerCase() === 'i' || e.key.toLowerCase() === 'a')) {
+        e.preventDefault();
+        this.switchSidebarTab('ai');
       }
     });
   }

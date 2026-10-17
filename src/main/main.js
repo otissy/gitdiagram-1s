@@ -8,8 +8,12 @@ const diagramService = require('./services/diagramService');
 const symbolService = require('./services/symbolService');
 const { GitHubRemoteService } = require('./services/githubRemoteService');
 const terminalService = require('./services/terminalService');
+const ExtensionService = require('./services/extensionService');
+const AiService = require('./services/aiService');
 
 let githubRemoteService = null;
+let extensionService = null;
+let aiService = null;
 let mainWindow = null;
 let currentWatcher = null;
 const recentsFilePath = path.join(app.getPath('userData'), 'recent-repos.json');
@@ -355,6 +359,93 @@ function registerIpcHandlers() {
   ipcMain.handle('terminal:killAll', () => {
     return terminalService.killAll();
   });
+
+  // VS Code Extensions Marketplace & Manager
+  ipcMain.handle('extensions:search', async (event, query, page) => {
+    return await extensionService.searchMarketplace(query, page);
+  });
+
+  ipcMain.handle('extensions:installMarketplace', async (event, id) => {
+    return await extensionService.installFromMarketplace(id);
+  });
+
+  ipcMain.handle('extensions:installVsix', async () => {
+    const res = await dialog.showOpenDialog(mainWindow, {
+      title: 'Install VS Code Extension from VSIX',
+      properties: ['openFile'],
+      filters: [{ name: 'VS Code Extension (*.vsix)', extensions: ['vsix'] }]
+    });
+
+    if (res.canceled || !res.filePaths || res.filePaths.length === 0) {
+      return { canceled: true };
+    }
+
+    try {
+      const installRes = await extensionService.installFromVsix(res.filePaths[0]);
+      return { canceled: false, ...installRes };
+    } catch (err) {
+      return { canceled: false, success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('extensions:getInstalled', () => {
+    return extensionService.getInstalledExtensions();
+  });
+
+  ipcMain.handle('extensions:uninstall', (event, id) => {
+    return extensionService.uninstallExtension(id);
+  });
+
+  ipcMain.handle('extensions:toggle', (event, id, enabled) => {
+    return extensionService.toggleExtension(id, enabled);
+  });
+
+  ipcMain.handle('extensions:getThemes', () => {
+    return extensionService.getAvailableThemes();
+  });
+
+  ipcMain.handle('extensions:setTheme', (event, themeId) => {
+    return extensionService.setActiveTheme(themeId);
+  });
+
+  ipcMain.handle('extensions:getSnippets', () => {
+    return extensionService.getSnippets();
+  });
+
+  // AI Agent & Subscriptions (Antigravity, Anthropic, OpenAI, Gemini, Ollama, LM Studio)
+  ipcMain.handle('ai:getConfig', () => {
+    return aiService.getConfigSafe();
+  });
+
+  ipcMain.handle('ai:saveConfig', (event, config) => {
+    return aiService.saveConfig(config);
+  });
+
+  ipcMain.handle('ai:testConnection', async (event, provider) => {
+    return await aiService.testConnection(provider);
+  });
+
+  ipcMain.handle('ai:chat', (event, prompt, context) => {
+    aiService.streamChat(
+      prompt,
+      context,
+      (chunk) => {
+        if (!event.sender.isDestroyed()) event.sender.send('ai:chunk', chunk);
+      },
+      () => {
+        if (!event.sender.isDestroyed()) event.sender.send('ai:done');
+      },
+      (err) => {
+        if (!event.sender.isDestroyed()) event.sender.send('ai:error', err);
+      }
+    );
+    return { started: true };
+  });
+
+  ipcMain.handle('ai:abort', () => {
+    aiService.abortCurrent();
+    return { success: true };
+  });
 }
 
 // App lifecycle
@@ -365,7 +456,7 @@ app.whenReady().then(() => {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';"
+          "default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com https://open-vsx.org https://*.open-vsx.org; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';"
         ]
       }
     });
@@ -377,6 +468,11 @@ app.whenReady().then(() => {
   });
 
   githubRemoteService = new GitHubRemoteService(app.getPath('userData'));
+  extensionService = new ExtensionService();
+  extensionService.init();
+  aiService = new AiService();
+  aiService.init();
+
   registerIpcHandlers();
   createWindow();
 

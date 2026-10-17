@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: https://avatars.githubusercontent.com https://github.com https://open-vsx.org https://*.open-vsx.org; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; object-src 'none'; frame-src 'none'; base-uri 'self';">
   <title>Vision IDE</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/sidebar.css">
@@ -161,6 +161,19 @@
           </svg>
           <span id="github-pr-badge" class="activity-badge" style="display: none; background: #8957e5;">0</span>
         </button>
+        <button id="act-extensions" class="activity-btn" title="VS Code Extensions & Themes (Ctrl+Shift+X)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+        </button>
+        <button id="act-ai" class="activity-btn" title="AI Agent & Subscriptions (Ctrl+Shift+I)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
+          </svg>
+        </button>
         <button id="act-refresh" class="activity-btn" style="margin-top: auto;" title="Reload Repository & Diagram (Ctrl+R)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="23 4 23 10 17 10"></polyline>
@@ -213,6 +226,60 @@
 
         <div id="sidebar-content-github" class="sidebar-content" style="display: none;">
           <div id="github-container"></div>
+        </div>
+
+        <div id="sidebar-content-extensions" class="sidebar-content" style="display: none; flex-direction: column;">
+          <div class="ext-toolbar" style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="ext-search-input" class="filter-input" placeholder="Search Open VSX (e.g. Dracula, Python)..." style="flex: 1;">
+              <button id="btn-install-vsix" class="btn-secondary" title="Install extension from local .vsix file" style="padding: 4px 8px; font-size: 11px; white-space: nowrap;">
+                VSIX...
+              </button>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between;">
+              <div class="segmented-control" style="display: flex; background: var(--bg-primary); border-radius: 4px; padding: 2px;">
+                <button id="ext-tab-installed" class="tab-btn active" style="padding: 2px 8px; font-size: 11px; border: none; background: transparent; color: var(--text-primary); cursor: pointer; border-radius: 3px;">Installed (<span id="ext-count-installed">0</span>)</button>
+                <button id="ext-tab-marketplace" class="tab-btn" style="padding: 2px 8px; font-size: 11px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 3px;">Marketplace</button>
+              </div>
+              <button id="btn-pick-theme" class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" title="Switch VS Code Theme">🎨 Themes</button>
+            </div>
+          </div>
+          <div id="ext-list-container" style="overflow-y: auto; padding: 8px;"></div>
+        </div>
+
+        <div id="sidebar-content-ai" class="sidebar-content" style="display: none; flex-direction: column;">
+          <div class="ai-header" style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15);">
+            <div id="ai-active-provider-pill" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #58a6ff; background: rgba(88, 166, 255, 0.12); padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(88, 166, 255, 0.25);">
+              <span class="ai-provider-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #58a6ff;"></span>
+              <span id="ai-provider-label">Antigravity</span>
+            </div>
+            <button id="btn-ai-settings" class="icon-btn" title="Configure AI Subscriptions & Keys" style="padding: 4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+          </div>
+          <!-- Quick action chips -->
+          <div class="ai-chips-bar" style="padding: 8px 12px; display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border-color); white-space: nowrap;">
+            <button class="ai-chip" data-prompt="Explain the overall codebase architecture and modules shown in the diagram." style="padding: 3px 8px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 12px; cursor: pointer;">🗺️ Explain Diagram</button>
+            <button class="ai-chip" data-prompt="Analyze the active file, describe its role, and identify any edge cases or security concerns." style="padding: 3px 8px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 12px; cursor: pointer;">🔍 Review File</button>
+            <button class="ai-chip" data-prompt="Suggest refactoring and clean code optimizations for the active file." style="padding: 3px 8px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 12px; cursor: pointer;">⚡ Refactor</button>
+            <button class="ai-chip" data-prompt="Generate a complete suite of unit tests for the current code." style="padding: 3px 8px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 12px; cursor: pointer;">🧪 Tests</button>
+          </div>
+          <!-- Messages -->
+          <div id="ai-chat-messages" style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px;"></div>
+          <!-- Input -->
+          <div class="ai-input-area" style="padding: 10px; border-top: 1px solid var(--border-color); background: var(--bg-secondary);">
+            <div style="display: flex; gap: 6px; position: relative;">
+              <textarea id="ai-chat-input" placeholder="Ask AI Agent about code, architecture, or Antigravity..." rows="2" style="flex: 1; resize: none; border-radius: 6px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; font-size: 12px; font-family: inherit; line-height: 1.4;"></textarea>
+              <button id="btn-ai-send" class="btn-primary" style="align-self: flex-end; padding: 8px 12px; font-size: 12px;">Send</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 10px; color: var(--text-muted);">
+              <span>Shift+Enter for newline</span>
+              <span id="ai-model-tag" style="font-family: monospace;">auto</span>
+            </div>
+          </div>
         </div>
 
         <div class="sidebar-resizer" id="sidebar-resizer"></div>
@@ -650,6 +717,8 @@
   <script src="js/outlineController.js"></script>
   <script src="js/gitController.js"></script>
   <script src="js/githubController.js"></script>
+  <script src="js/extensionController.js"></script>
+  <script src="js/aiController.js"></script>
   <script src="js/app.js"></script>
   <script src="js/ideController.js"></script>
 </body>

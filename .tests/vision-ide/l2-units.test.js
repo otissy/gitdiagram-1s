@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const fs = require('fs');
 const fileService = require('../../src/main/services/fileService');
 const gitService = require('../../src/main/services/gitService');
 const diagramService = require('../../src/main/services/diagramService');
@@ -429,6 +430,144 @@ test('L2: renderer index.html includes IDE mode elements, terminal drawer, and c
   assert.ok(content.includes('xterm/lib/xterm.js'), 'xterm.js must be loaded');
   assert.ok(content.includes('xterm-addon-fit/lib/xterm-addon-fit.js'), 'xterm-addon-fit must be loaded');
   assert.ok(content.includes('js/ideController.js'), 'ideController.js must be loaded');
+  // Verify extensions & AI elements
+  assert.ok(content.includes('id="act-extensions"'), 'act-extensions must exist in activity bar');
+  assert.ok(content.includes('id="act-ai"'), 'act-ai must exist in activity bar');
+  assert.ok(content.includes('id="sidebar-content-extensions"'), 'sidebar-content-extensions must exist');
+  assert.ok(content.includes('id="sidebar-content-ai"'), 'sidebar-content-ai must exist');
+});
+
+test('L2: zipService extracts zip buffer and guards against zip-slip directory traversal', () => {
+  const ZipService = require('../../src/main/services/zipService');
+  const tmpDir = path.resolve(__dirname, '../fixtures/test_zip_extract');
+  if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  // Create a minimal stored zip entry for test.txt
+  function makeZip(name, data) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const dataBuf = Buffer.from(data, 'utf8');
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(0, 8); // stored
+    header.writeUInt32LE(dataBuf.length, 18);
+    header.writeUInt32LE(dataBuf.length, 22);
+    header.writeUInt16LE(nameBuf.length, 26);
+    return Buffer.concat([header, nameBuf, dataBuf]);
+  }
+
+  const zipBuf = Buffer.concat([
+    makeZip('hello.txt', 'Hello Vision IDE'),
+    makeZip('../malicious.txt', 'Hacked')
+  ]);
+
+  const extracted = ZipService.extractZip(zipBuf, tmpDir);
+  assert.ok(extracted.includes('hello.txt'));
+  assert.ok(fs.existsSync(path.join(tmpDir, 'hello.txt')));
+  assert.equal(fs.readFileSync(path.join(tmpDir, 'hello.txt'), 'utf8'), 'Hello Vision IDE');
+
+  // Verify zip-slip attack file was NOT written outside tmpDir
+  assert.equal(fs.existsSync(path.resolve(tmpDir, '../malicious.txt')), false, 'Malicious file outside directory must be blocked');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('L2: extensionService parses VS Code theme contributions into Monaco and UI tokens', () => {
+  const ExtensionService = require('../../src/main/services/extensionService');
+  const service = new ExtensionService();
+  const testExtDir = path.resolve(__dirname, '../fixtures/mock-theme-ext');
+  if (fs.existsSync(testExtDir)) fs.rmSync(testExtDir, { recursive: true, force: true });
+  fs.mkdirSync(path.join(testExtDir, 'themes'), { recursive: true });
+
+  // Create a mock VS Code theme JSON file
+  const themeJson = {
+    name: 'Cyber Neon',
+    type: 'dark',
+    colors: {
+      'editor.background': '#0a0e14',
+      'editor.foreground': '#b3b1ad',
+      'sideBar.background': '#01060e',
+      'activityBarBadge.background': '#ff6ac1'
+    },
+    tokenColors: [
+      {
+        scope: ['comment', 'punctuation.definition.comment'],
+        settings: { foreground: '#626a73', fontStyle: 'italic' }
+      },
+      {
+        scope: 'keyword',
+        settings: { foreground: '#ff8f40' }
+      }
+    ]
+  };
+
+  fs.writeFileSync(path.join(testExtDir, 'themes/cyber-neon.json'), JSON.stringify(themeJson, null, 2));
+
+  const contributes = {
+    themes: [
+      {
+        id: 'cyber-neon',
+        label: 'Cyber Neon Theme',
+        uiTheme: 'vs-dark',
+        path: './themes/cyber-neon.json'
+      }
+    ]
+  };
+
+  const parsed = service.parseContributions(testExtDir, contributes);
+  assert.equal(parsed.themes.length, 1);
+  assert.equal(parsed.themes[0].id, 'cyber-neon');
+  assert.equal(parsed.themes[0].label, 'Cyber Neon Theme');
+
+  // Register in memory
+  service.installedExtensions.set('author.cyber-neon', {
+    id: 'author.cyber-neon',
+    name: 'cyber-neon',
+    displayName: 'Cyber Neon Theme',
+    enabled: true,
+    contributes: parsed
+  });
+
+  const monacoDef = service.getMonacoThemeDefinition('author.cyber-neon:cyber-neon');
+  assert.ok(monacoDef);
+  assert.equal(monacoDef.isCustom, true);
+  assert.equal(monacoDef.base, 'vs-dark');
+  assert.ok(monacoDef.rules.some(r => r.token === 'keyword' && r.foreground === 'ff8f40'));
+  assert.equal(monacoDef.uiColors.bgPrimary, '#0a0e14');
+  assert.equal(monacoDef.uiColors.accentColor, '#ff6ac1');
+
+  fs.rmSync(testExtDir, { recursive: true, force: true });
+});
+
+test('L2: aiService safely masks credentials and detects Antigravity runtime', () => {
+  const AiService = require('../../src/main/services/aiService');
+  const service = new AiService();
+  const tmpSettings = path.resolve(__dirname, '../fixtures/test-ai-settings.json');
+  if (fs.existsSync(tmpSettings)) fs.rmSync(tmpSettings, { force: true });
+
+  service.init(tmpSettings);
+
+  // Save sample keys
+  service.saveConfig({
+    activeProvider: 'anthropic',
+    keys: {
+      anthropic: 'sk-ant-api03-abcdef1234567890qwerty',
+      openai: 'sk-proj-supersecretkey999'
+    }
+  });
+
+  const safe = service.getConfigSafe();
+  assert.equal(safe.activeProvider, 'anthropic');
+  assert.equal(safe.hasKey.anthropic, true);
+  assert.equal(safe.hasKey.openai, true);
+  assert.equal(safe.hasKey.gemini, false);
+  // Verify masking: full secret must NOT be in safe config
+  assert.ok(!safe.keysMasked.anthropic.includes('1234567890'));
+  assert.ok(safe.keysMasked.anthropic.includes('...'));
+
+  if (fs.existsSync(tmpSettings)) fs.rmSync(tmpSettings, { force: true });
 });
 
 

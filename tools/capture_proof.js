@@ -51,6 +51,36 @@ ipcMain.handle('github:getUserRepos', () => ({
 const { GitHubRemoteService } = require('../src/main/services/githubRemoteService');
 const githubRemoteService = new GitHubRemoteService();
 ipcMain.handle('github:getRepoDetails', async (e, p, o, r) => await githubRemoteService.getRepoFullDetails(p, o, r));
+
+const ExtensionService = require('../src/main/services/extensionService');
+const extensionService = new ExtensionService();
+extensionService.init();
+ipcMain.handle('extensions:search', async (e, q, p) => await extensionService.searchMarketplace(q, p));
+ipcMain.handle('extensions:installMarketplace', async (e, id) => await extensionService.installFromMarketplace(id));
+ipcMain.handle('extensions:installVsix', async () => ({ canceled: true }));
+ipcMain.handle('extensions:getInstalled', () => extensionService.getInstalledExtensions());
+ipcMain.handle('extensions:uninstall', (e, id) => extensionService.uninstallExtension(id));
+ipcMain.handle('extensions:toggle', (e, id, en) => extensionService.toggleExtension(id, en));
+ipcMain.handle('extensions:getThemes', () => extensionService.getAvailableThemes());
+ipcMain.handle('extensions:setTheme', (e, id) => extensionService.setActiveTheme(id));
+ipcMain.handle('extensions:getSnippets', () => extensionService.getSnippets());
+
+const AiService = require('../src/main/services/aiService');
+const aiService = new AiService();
+aiService.init();
+ipcMain.handle('ai:getConfig', () => aiService.getConfigSafe());
+ipcMain.handle('ai:saveConfig', (e, c) => aiService.saveConfig(c));
+ipcMain.handle('ai:testConnection', async (e, p) => await aiService.testConnection(p));
+ipcMain.handle('ai:chat', (e, p, c) => {
+  aiService.streamChat(p, c,
+    (chunk) => { if (!e.sender.isDestroyed()) e.sender.send('ai:chunk', chunk); },
+    () => { if (!e.sender.isDestroyed()) e.sender.send('ai:done'); },
+    (err) => { if (!e.sender.isDestroyed()) e.sender.send('ai:error', err); }
+  );
+  return { started: true };
+});
+ipcMain.handle('ai:abort', () => aiService.abortCurrent());
+
 ipcMain.handle('shell:openExternal', async () => ({ success: true }));
 ipcMain.handle('window:minimize', () => {});
 ipcMain.handle('window:maximize', () => {});
@@ -93,14 +123,13 @@ app.whenReady().then(async () => {
         const symFile = ${JSON.stringify(path.join(process.cwd(), 'src/main/services/symbolService.js').replace(/\\/g, '/'))};
         await window.monacoController.openFileAndReveal(symFile, 'src/main/services/symbolService.js', 17, 'extractSymbolsFromContent');
 
-        // Switch Sidebar to Symbols & Outline view
-        const actOutline = document.getElementById('act-outline');
-        if (actOutline) actOutline.click();
+        // Switch Sidebar to AI Agent view!
+        const actAi = document.getElementById('act-ai');
+        if (actAi) actAi.click();
 
         // Switch Diagram to Symbols mode
         console.log('Switching diagram mode to sym...');
         window.diagramRenderer.setMode('sym');
-        console.log('diagramRenderer currentMode is:', window.diagramRenderer.currentMode);
       } catch (err) {
         console.error('ERROR in step 2:', err);
       }

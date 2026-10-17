@@ -424,6 +424,65 @@ class IdeController {
         hint: 'Lightweight',
         icon: '⚡',
         action: () => this.setIdeMode(false)
+      },
+      {
+        id: 'theme-picker',
+        title: 'Preferences: Color Theme',
+        hint: 'Theme',
+        icon: '🎨',
+        action: () => {
+          if (window.extensionController) window.extensionController.showThemePickerModal();
+        }
+      },
+      {
+        id: 'ext-show',
+        title: 'Extensions: Show Installed Extensions',
+        hint: 'Ctrl+Shift+X',
+        icon: '📦',
+        action: () => {
+          if (window.app) window.app.switchSidebarTab('extensions');
+        }
+      },
+      {
+        id: 'ext-install-vsix',
+        title: 'Extensions: Install from VSIX...',
+        hint: 'VSIX',
+        icon: '📥',
+        action: () => {
+          if (window.extensionController && window.extensionController.btnInstallVsix) {
+            window.extensionController.btnInstallVsix.click();
+          }
+        }
+      },
+      {
+        id: 'ai-chat',
+        title: 'AI: Chat with Vision IDE Agent',
+        hint: 'Ctrl+Shift+I',
+        icon: '🤖',
+        action: () => {
+          if (window.app) window.app.switchSidebarTab('ai');
+        }
+      },
+      {
+        id: 'ai-settings',
+        title: 'AI: Configure Providers & Subscriptions',
+        hint: 'Settings',
+        icon: '⚙️',
+        action: () => {
+          if (window.aiController) window.aiController.showSettingsModal();
+        }
+      },
+      {
+        id: 'ai-explain-diagram',
+        title: 'AI: Explain Architecture Diagram',
+        hint: 'Agent',
+        icon: '🗺️',
+        action: () => {
+          if (window.app) window.app.switchSidebarTab('ai');
+          if (window.aiController) {
+            window.aiController.sendMessage('Explain the overall codebase architecture and modules shown in the diagram.');
+          }
+        }
       }
     ];
 
