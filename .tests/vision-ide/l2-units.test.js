@@ -151,16 +151,13 @@ test('L2: GitHubRemoteService manages config and token state safely', () => {
   } catch (e) {}
 });
 
-test('L2: run.ps1 is strictly prohibited and must not exist in repository', () => {
+test('L2: launch scripts are redundant and standard npm start is configured', () => {
   const fs = require('fs');
   const runPs1Path = path.resolve(__dirname, '../../run.ps1');
   assert.equal(fs.existsSync(runPs1Path), false, 'run.ps1 must not exist');
 
-  // Verify only run.bat and run.sh are present
-  const runBatPath = path.resolve(__dirname, '../../run.bat');
-  const runShPath = path.resolve(__dirname, '../../run.sh');
-  assert.equal(fs.existsSync(runBatPath), true, 'run.bat must exist');
-  assert.equal(fs.existsSync(runShPath), true, 'run.sh must exist');
+  const pkg = require('../../package.json');
+  assert.equal(pkg.scripts.start, 'electron .');
 });
 
 test('L2: symbolService extracts deep symbols (classes, methods, functions, vars) in JS/TS', () => {

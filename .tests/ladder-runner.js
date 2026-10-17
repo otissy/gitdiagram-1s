@@ -68,11 +68,14 @@ function main() {
     if (!fs.existsSync(arg)) { console.error(`ladder: no such directory: ${arg}`); process.exit(2); }
     dirs = [arg];
   } else {
-    const root = path.join(__dirname, 'gitdiagram-1s');
-    if (fs.existsSync(root)) {
-      dirs = [root];
+    const visionRoot = path.join(__dirname, 'vision-ide');
+    const legacyRoot = path.join(__dirname, 'gitdiagram-1s');
+    if (fs.existsSync(visionRoot)) {
+      dirs = [visionRoot];
+    } else if (fs.existsSync(legacyRoot)) {
+      dirs = [legacyRoot];
     } else {
-      console.log('ladder: no .tests/gitdiagram-1s directory.');
+      console.log('ladder: no .tests/vision-ide directory.');
       process.exit(0);
     }
   }

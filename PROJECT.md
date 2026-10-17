@@ -10,16 +10,15 @@ By default, Vision IDE runs in **Lightweight Viewer Mode** (<75MB RAM idle, inst
 
 ## How to run and test
 
-- Windows launch: `.\run.bat` (or `npm start`)
-- Linux launch: `./run.sh` (or `npm start`)
-- test: `npm test` (runs ladder tests across L1 import, L2 units, L3 module, L4 e2e)
-- capture live proof: `node tools/capture_proof.js`
+- Launch: `npm start`
+- Test: `npm test` (runs ladder tests across L1 import, L2 units, L3 module, L4 e2e)
+- Capture live proof: `node tools/capture_proof.js`
 
 ## Limits
 
 | Limit | What it means |
 |---|---|
-| `run.ps1` PROHIBITED | PowerShell launch scripts (`run.ps1`) are not permitted. Use `.\run.bat` on Windows, `./run.sh` on Linux, or `npm start`. |
+| Launching | Use standard `npm start`. Legacy batch/shell launch scripts are deprecated. |
 | `electron` | Desktop windowing runtime on Windows 10/11 and Linux |
 | Local filesystem & Cache | Large repos need fast scanning with `.gitignore` and default ignores (`node_modules`, `.git`, `dist`, etc.); remote repos are shallow-cached locally. |
 | Private Repos | Requires GitHub token with `repo` scope to clone and list user private repositories |

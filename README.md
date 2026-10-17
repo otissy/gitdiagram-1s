@@ -46,24 +46,18 @@
   - Electron context isolation with strictly typed IPC channels (`nodeIntegration: false`, `contextIsolation: true`).
   - No remote network dependencies required for local exploration.
 
-- 💻 **Cross-Platform: Windows Native & Linux**
+- 💻 **Cross-Platform: Windows & Linux**
   - Custom frameless title bar with Windows controls, repository breadcrumb, branch switcher, and quick file search (`Ctrl+P`).
-  - Native launch scripts: `run.bat` for Windows and `run.sh` for Linux.
+  - Lightweight and fast launch across modern operating systems.
 
 ---
 
 ## Quick Start
 
-### Windows
-Double-click `run.bat` or run:
-```powershell
-npm start
-```
-
-### Linux
+Install dependencies and start Vision IDE:
 ```bash
-chmod +x run.sh
-./run.sh
+npm install
+npm start
 ```
 
 ---
