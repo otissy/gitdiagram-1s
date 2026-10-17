@@ -331,12 +331,28 @@ class DiagramRenderer {
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
     const nodeMap = new Map(filteredNodes.map(n => [n.id, n]));
 
+    // Compute incoming count for each target in the active graph
+    const targetInCounts = new Map();
+    for (const l of filteredLinks) {
+      const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+      targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+    }
+
     const linkPaths = linkG.selectAll('.diagram-link')
       .data(filteredLinks)
       .enter()
       .append('path')
-      .attr('class', 'diagram-link')
-      .attr('marker-end', 'url(#arrow-import)')
+      .attr('class', d => {
+        const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+        const tgtNode = nodeMap.get(tgtId);
+        const inCount = Math.max(targetInCounts.get(tgtId) || 0, (tgtNode && tgtNode.inDegree) || 0);
+        d._inCount = inCount;
+        const weight = this.getLinkWeight(inCount);
+        d._weight = weight;
+        return `diagram-link ${weight.tierClass}`;
+      })
+      .style('--link-width', d => `${d._weight.width}px`)
+      .attr('marker-end', d => `url(#${d._weight.markerId})`)
       .attr('d', d => {
         const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
         const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
@@ -370,6 +386,30 @@ class DiagramRenderer {
         const y2 = tgt.y + tgt.height / 2;
         const arcX = Math.max(x1, x2) + 25;
         return `M ${x1} ${y1} C ${arcX} ${y1}, ${arcX} ${y2}, ${x2} ${y2}`;
+      })
+      .on('mouseenter', (event, d) => {
+        const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
+        const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+        if (!src || !tgt) return;
+        d3.select(event.currentTarget).classed('highlighted', true);
+        if (this.tooltip) {
+          const esc = typeof escapeHtml === 'function' ? escapeHtml : s => s;
+          const count = d._inCount || 1;
+          this.tooltip.innerHTML = `
+            <div class="tooltip-title" style="color: #58a6ff;">🔗 Dependency Link</div>
+            <div class="tooltip-row"><span>Source:</span> <code>${esc(src.relativePath)}</code></div>
+            <div class="tooltip-row"><span>Target:</span> <code>${esc(tgt.relativePath)}</code></div>
+            <div class="tooltip-row"><span>Target Inflow:</span> <strong>${count} incoming ${count === 1 ? 'file' : 'files'}</strong></div>
+          `;
+          this.tooltip.style.display = 'block';
+          const rect = this.container.getBoundingClientRect();
+          this.tooltip.style.left = `${event.clientX - rect.left + 15}px`;
+          this.tooltip.style.top = `${event.clientY - rect.top + 15}px`;
+        }
+      })
+      .on('mouseleave', (event) => {
+        d3.select(event.currentTarget).classed('highlighted', false);
+        this.hideTooltip();
       });
 
     // Draw nodes
@@ -455,12 +495,28 @@ class DiagramRenderer {
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
     const nodeMap = new Map(filteredNodes.map(n => [n.id, n]));
 
+    // Compute incoming count for each target in the active graph
+    const targetInCounts = new Map();
+    for (const l of filteredLinks) {
+      const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+      targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+    }
+
     const linkPaths = linkG.selectAll('.diagram-link')
       .data(filteredLinks)
       .enter()
       .append('path')
-      .attr('class', 'diagram-link')
-      .attr('marker-end', 'url(#arrow-import)')
+      .attr('class', d => {
+        const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+        const tgtNode = nodeMap.get(tgtId);
+        const inCount = Math.max(targetInCounts.get(tgtId) || 0, (tgtNode && tgtNode.inDegree) || 0);
+        d._inCount = inCount;
+        const weight = this.getLinkWeight(inCount);
+        d._weight = weight;
+        return `diagram-link ${weight.tierClass}`;
+      })
+      .style('--link-width', d => `${d._weight.width}px`)
+      .attr('marker-end', d => `url(#${d._weight.markerId})`)
       .attr('d', d => {
         const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
         const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
@@ -478,6 +534,30 @@ class DiagramRenderer {
           const dx = Math.max(30, (x1 - x2) * 0.35);
           return `M ${src.x} ${y1} C ${src.x - dx} ${y1}, ${tgt.x + tgt.width + dx} ${y2}, ${tgt.x + tgt.width} ${y2}`;
         }
+      })
+      .on('mouseenter', (event, d) => {
+        const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
+        const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+        if (!src || !tgt) return;
+        d3.select(event.currentTarget).classed('highlighted', true);
+        if (this.tooltip) {
+          const esc = typeof escapeHtml === 'function' ? escapeHtml : s => s;
+          const count = d._inCount || 1;
+          this.tooltip.innerHTML = `
+            <div class="tooltip-title" style="color: #58a6ff;">🔗 Dependency Link</div>
+            <div class="tooltip-row"><span>Source:</span> <code>${esc(src.relativePath)}</code></div>
+            <div class="tooltip-row"><span>Target:</span> <code>${esc(tgt.relativePath)}</code></div>
+            <div class="tooltip-row"><span>Target Inflow:</span> <strong>${count} incoming ${count === 1 ? 'file' : 'files'}</strong></div>
+          `;
+          this.tooltip.style.display = 'block';
+          const rect = this.container.getBoundingClientRect();
+          this.tooltip.style.left = `${event.clientX - rect.left + 15}px`;
+          this.tooltip.style.top = `${event.clientY - rect.top + 15}px`;
+        }
+      })
+      .on('mouseleave', (event) => {
+        d3.select(event.currentTarget).classed('highlighted', false);
+        this.hideTooltip();
       });
 
     // Nodes layer
@@ -1021,16 +1101,36 @@ class DiagramRenderer {
       }
     };
 
+    // Compute incoming count for symbols
+    const targetInCounts = new Map();
+    for (const l of activeLinks) {
+      const tgtId = typeof l.target === 'object' ? l.target.id : l.target;
+      targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+    }
+
     // Links layer
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
     const linkPaths = linkG.selectAll('.diagram-link')
       .data(activeLinks)
       .enter()
       .append('path')
-      .attr('class', d => `diagram-link type-${d.type}`)
+      .attr('class', d => {
+        const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+        const count = targetInCounts.get(tgtId) || 1;
+        d._inCount = count;
+        const weight = this.getLinkWeight(count);
+        d._weight = weight;
+        return `diagram-link type-${d.type} ${d.type === 'contains' ? 'tier-normal' : weight.tierClass}`;
+      })
+      .style('--link-width', d => d.type === 'contains' ? '1.2px' : `${d._weight.width}px`)
       .attr('stroke', d => d.type === 'contains' ? '#a371f7' : d.type === 'inherits' ? '#3fb950' : '#58a6ff')
       .attr('stroke-dasharray', d => d.type === 'contains' ? '4 3' : null)
-      .attr('marker-end', d => d.type === 'calls' ? 'url(#arrow-call)' : d.type === 'inherits' ? 'url(#arrow-inherit)' : null)
+      .attr('marker-end', d => {
+        if (d.type === 'calls') {
+          return d._weight.isThick ? 'url(#arrow-call-thick)' : 'url(#arrow-call)';
+        }
+        return d.type === 'inherits' ? 'url(#arrow-inherit)' : null;
+      })
       .attr('d', d => computeCurvePath(d));
 
     // Nodes layer
@@ -1223,6 +1323,50 @@ class DiagramRenderer {
     }
   }
 
+  /**
+   * Determine link styling, thickness, and marker based on the incoming traffic to the target file/symbol
+   */
+  getLinkWeight(inCount) {
+    if (inCount <= 1) {
+      return {
+        width: 1.4,
+        tierClass: 'tier-normal',
+        markerId: 'arrow-import',
+        isThick: false
+      };
+    } else if (inCount === 2) {
+      return {
+        width: 2.4,
+        tierClass: 'tier-medium',
+        markerId: 'arrow-import-medium',
+        isThick: true
+      };
+    } else if (inCount === 3) {
+      return {
+        width: 3.4,
+        tierClass: 'tier-high',
+        markerId: 'arrow-import-medium',
+        isThick: true
+      };
+    } else if (inCount === 4) {
+      return {
+        width: 4.6,
+        tierClass: 'tier-very-high',
+        markerId: 'arrow-import-thick',
+        isThick: true
+      };
+    } else {
+      // 5+ files going to this target: major architectural highway
+      const dynamicWidth = Math.min(7.0, 4.6 + (inCount - 5) * 0.4);
+      return {
+        width: dynamicWidth,
+        tierClass: 'tier-highway',
+        markerId: 'arrow-import-thick',
+        isThick: true
+      };
+    }
+  }
+
   highlightSymbolNode(symbolName) {
     if (!symbolName) return;
     this.zoomGroup.selectAll('.diagram-symbol-node').each(function(d) {
@@ -1243,6 +1387,11 @@ class DiagramRenderer {
         <div class="legend-item"><span class="legend-dot" style="background: #3fb950;"></span><span>Function</span></div>
         <div class="legend-item"><span class="legend-dot" style="background: #ffa657;"></span><span>Variable</span></div>
         <div class="legend-item"><span class="legend-dot" style="background: #f778ba;"></span><span>Interface</span></div>
+        <div class="legend-item" style="border-left: 1px solid var(--border-color); padding-left: 8px; display: flex; align-items: center; gap: 5px;" title="Thicker call lines indicate higher call frequency">
+          <span style="display: inline-block; width: 12px; height: 1.5px; background: rgba(240, 246, 252, 0.4); border-radius: 1px;"></span>
+          <span style="display: inline-block; width: 14px; height: 3.8px; background: #39c5bb; border-radius: 2px;"></span>
+          <span style="font-size: 10px; color: var(--text-muted);">Thickness: Call Volume</span>
+        </div>
       `;
     } else {
       legend.innerHTML = `
@@ -1251,6 +1400,11 @@ class DiagramRenderer {
         <div class="legend-item"><span class="legend-dot" style="background: #a371f7;"></span><span>Service</span></div>
         <div class="legend-item"><span class="legend-dot" style="background: #58a6ff;"></span><span>TypeScript/JS</span></div>
         <div class="legend-item"><span class="legend-dot" style="background: #3fb950;"></span><span>Python/Go/Rust</span></div>
+        <div class="legend-item" style="border-left: 1px solid var(--border-color); padding-left: 8px; display: flex; align-items: center; gap: 5px;" title="Lines become thicker when more files import the target">
+          <span style="display: inline-block; width: 12px; height: 1.5px; background: rgba(240, 246, 252, 0.4); border-radius: 1px;"></span>
+          <span style="display: inline-block; width: 14px; height: 4px; background: #58a6ff; border-radius: 2px;"></span>
+          <span style="font-size: 10px; color: var(--text-muted);">Thickness: Inflow Traffic</span>
+        </div>
       `;
     }
   }
@@ -1265,7 +1419,7 @@ class DiagramRenderer {
       .data(nodes)
       .enter()
       .append('g')
-      .attr('class', 'diagram-node')
+      .attr('class', d => `diagram-node${d.inDegree >= 4 ? ' node-hub' : ''}`)
       .attr('id', d => 'node-' + d.id.replace(/[^a-zA-Z0-9_-]/g, '_'))
       .attr('transform', d => isForce ? `translate(0, 0)` : `translate(${d.x}, ${d.y})`);
 
@@ -1332,12 +1486,15 @@ class DiagramRenderer {
         return d.name.length > maxLen ? d.name.substring(0, maxLen - 1) + '…' : d.name;
       });
 
-    // Line count badge / size
+    // Line count badge / size + incoming traffic badge
     nodeSelection.append('text')
       .attr('class', 'diagram-node-badge')
       .attr('x', 22)
       .attr('y', d => (d.height || 28) > 30 ? 29 : 23)
-      .text(d => `${d.lines ? d.lines + 'L' : (d.size / 1024).toFixed(1) + ' KB'}`);
+      .text(d => {
+        const sizeStr = d.lines ? d.lines + 'L' : (d.size / 1024).toFixed(1) + ' KB';
+        return d.inDegree > 1 ? `${sizeStr} • ${d.inDegree} in` : sizeStr;
+      });
 
     // Click handler -> Open file in Monaco!
     nodeSelection.on('click', (event, d) => {

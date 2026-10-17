@@ -42,6 +42,25 @@ By default, Vision IDE runs in **Lightweight Viewer Mode** (<75MB RAM idle, inst
 - Symbols & Outline Controller → `src/renderer/js/outlineController.js`
 - Frontend UI & Monaco/Canvas controller → `src/renderer/`
 
+## Weighted Line Thickness & Centrality Traffic Visualizer
+
+1. **In-Degree Traffic Weighting:**
+   - Lines and edges dynamically scale their stroke width based on the number of incoming dependencies pointing to a target file (`inCount = Math.max(targetInCounts.get(tgtId), tgtNode.inDegree)`).
+   - Tiers:
+     - Tier Normal (1 incoming): 1.4px width, subtle clean edge.
+     - Tier Medium (2 incoming): 2.4px width, medium blue.
+     - Tier High (3 incoming): 3.4px width, vibrant blue.
+     - Tier Very High (4 incoming): 4.6px width, strong blue with subtle drop-shadow.
+     - Tier Highway (5+ incoming): 4.6px - 7.0px width, luminous GitHub blue with dynamic drop-shadow glow.
+2. **Proportional SVG Markers:**
+   - SVG arrowheads use `markerUnits="userSpaceOnUse"` and tiered sizes (`arrow-import`, `arrow-import-medium`, `arrow-import-thick`) anchored at `refX="10"` so arrow tips stay directly on the node card boundary without drifting.
+3. **Interactive Link Hover:**
+   - Hovering directly over any dependency link path displays a tooltip indicating the exact source, target, and total incoming file volume (`${count} incoming files`).
+4. **Target Node Inflow Badges:**
+   - Target nodes display their incoming dependency volume directly on the card badge (`• ${d.inDegree} in`), and files with 4+ incoming dependencies are highlighted as central architectural hubs (`.node-hub`).
+5. **Mermaid Thick Arrow Export:**
+   - Exported Mermaid diagrams automatically use thick arrows (`==>`) for files imported by 3 or more modules.
+
 ## VS Code Extensions & Themes System
 
 1. **Open VSX Marketplace Integration:**

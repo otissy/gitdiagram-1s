@@ -311,11 +311,20 @@ function toMermaid(diagramData, mode = 'architecture') {
     lines.push('  end');
   }
 
-  // Dependency links
+  // Count incoming dependencies per target
+  const targetInCounts = new Map();
+  for (const link of links) {
+    const tgtId = typeof link.target === 'object' ? link.target.id : link.target;
+    targetInCounts.set(tgtId, (targetInCounts.get(tgtId) || 0) + 1);
+  }
+
+  // Dependency links: thicker arrows (==>) for targets with higher incoming volume
   for (const link of links) {
     const srcId = typeof link.source === 'object' ? link.source.id : link.source;
     const tgtId = typeof link.target === 'object' ? link.target.id : link.target;
-    lines.push(`  ${sanitizeId(srcId)} --> ${sanitizeId(tgtId)}`);
+    const inCount = targetInCounts.get(tgtId) || 1;
+    const arrow = inCount >= 3 ? '==>' : '-->';
+    lines.push(`  ${sanitizeId(srcId)} ${arrow} ${sanitizeId(tgtId)}`);
   }
 
   return lines.join('\n');

@@ -127,17 +127,22 @@ app.whenReady().then(async () => {
         const actAi = document.getElementById('act-ai');
         if (actAi) actAi.click();
 
-        // Switch Diagram to Symbols mode
-        console.log('Switching diagram mode to sym...');
-        window.diagramRenderer.setMode('sym');
+        // Switch Diagram to Architecture mode to display weighted lines
+        console.log('Switching diagram mode to arch...');
+        window.diagramRenderer.setMode('arch');
+
+        // Switch to Diagram-only view mode for fullscreen diagram fidelity
+        const modeDiag = document.getElementById('mode-diagram');
+        if (modeDiag) modeDiag.click();
+        setTimeout(() => window.diagramRenderer.fitToScreen(), 400);
       } catch (err) {
         console.error('ERROR in step 2:', err);
       }
     })();
   `);
 
-  // Wait 4 seconds for Monaco line reveal, Outline tree render, and D3 Symbol graph force layout to stabilize
-  await new Promise(r => setTimeout(r, 4000));
+  // Wait 3 seconds for layout and fitToScreen
+  await new Promise(r => setTimeout(r, 3000));
 
   const image = await win.webContents.capturePage();
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
