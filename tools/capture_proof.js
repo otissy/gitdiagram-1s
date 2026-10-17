@@ -12,12 +12,17 @@ const fileService = require('../src/main/services/fileService');
 const gitService = require('../src/main/services/gitService');
 const diagramService = require('../src/main/services/diagramService');
 const symbolService = require('../src/main/services/symbolService');
+const terminalService = require('../src/main/services/terminalService');
 const { ipcMain } = require('electron');
 
 // Register IPC handlers for test run
 ipcMain.handle('dialog:openFolder', async () => process.cwd());
 ipcMain.handle('storage:getRecent', () => [process.cwd()]);
 ipcMain.handle('storage:addRecent', (e, p) => [p]);
+ipcMain.handle('terminal:spawn', (e, id, cwd) => terminalService.spawnTerminal(id, cwd, e.sender));
+ipcMain.handle('terminal:write', (e, id, data) => terminalService.write(id, data));
+ipcMain.handle('terminal:kill', (e, id) => terminalService.kill(id));
+ipcMain.handle('terminal:killAll', () => terminalService.killAll());
 ipcMain.handle('repo:scan', async (e, p) => await fileService.scanDirectory(p));
 ipcMain.handle('file:read', async (e, p) => await fileService.readFile(p));
 ipcMain.handle('file:save', async (e, p, c) => await fileService.saveFile(p, c));

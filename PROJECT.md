@@ -6,6 +6,8 @@ The map of the ground. Read before any task; update at the end of every task.
 
 GitDiagram 1s is a Windows and Linux desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It supports opening any local folder or Git repository, as well as typing/pasting any remote GitHub repository (`owner/repo` or URL) for public repos and logging in with a GitHub Personal Access Token to explore private repositories. It includes deep symbol-level exploration (classes, methods, functions, variables, constants, interfaces), call hierarchy visualization, and instant click-to-jump line navigation in Monaco Editor.
 
+By default, GitDiagram 1s runs in **Lightweight Viewer Mode** (<75MB RAM idle, instant startup, read-only exploration). Users can explicitly opt into **Developer IDE Mode**, which dynamically activates an interactive Integrated Terminal drawer (xterm.js + native shell), Command Palette (`Ctrl+Shift+P` / `F1`), live in-place file editing with `Ctrl+S` workspace writes, dirty-state tab indicators, and a real-time developer status bar.
+
 ## How to run and test
 
 - Windows launch: `.\run.bat` (or `npm start`)
@@ -21,11 +23,14 @@ GitDiagram 1s is a Windows and Linux desktop application combining the fast, com
 | `electron` | Desktop windowing runtime on Windows 10/11 and Linux |
 | Local filesystem & Cache | Large repos need fast scanning with `.gitignore` and default ignores (`node_modules`, `.git`, `dist`, etc.); remote repos are shallow-cached locally. |
 | Private Repos | Requires GitHub token with `repo` scope to clone and list user private repositories |
+| Mode Isolation | Terminal processes and file edit capabilities remain dormant until the user explicitly opts into Developer IDE Mode |
 
 ## Sources of truth
 
 - File scanner & Git parser → `src/main/services/gitService.js` and `src/main/services/fileService.js`
 - Security hardening & input sanitization → `src/main/services/securityService.js` and `src/renderer/js/securityUtils.js`
+- Interactive Terminal service → `src/main/services/terminalService.js`
+- IDE Mode & Command Palette Controller → `src/renderer/js/ideController.js`
 - Symbol & call hierarchy extractor → `src/main/services/symbolService.js`
 - Diagram extraction & AST dependency resolver → `src/main/services/diagramService.js`
 - GitHub remote cloning & authentication → `src/main/services/githubRemoteService.js`

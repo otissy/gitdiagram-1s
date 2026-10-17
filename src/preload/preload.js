@@ -38,6 +38,24 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
+  // Terminal Services (Opt-in IDE Mode)
+  terminal: {
+    spawn: (sessionId, cwd) => ipcRenderer.invoke('terminal:spawn', sessionId, cwd),
+    write: (sessionId, data) => ipcRenderer.invoke('terminal:write', sessionId, data),
+    kill: (sessionId) => ipcRenderer.invoke('terminal:kill', sessionId),
+    killAll: () => ipcRenderer.invoke('terminal:killAll'),
+    onData: (callback) => {
+      const handler = (event, payload) => callback(payload);
+      ipcRenderer.on('terminal:data', handler);
+      return () => ipcRenderer.removeListener('terminal:data', handler);
+    },
+    onExit: (callback) => {
+      const handler = (event, payload) => callback(payload);
+      ipcRenderer.on('terminal:exit', handler);
+      return () => ipcRenderer.removeListener('terminal:exit', handler);
+    }
+  },
+
   // Window Controls
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),

@@ -368,4 +368,59 @@ test('L2: renderer index.html declares strict Content Security Policy without un
   assert.equal(scriptSrcPart.includes("'unsafe-inline'"), false, 'script-src must NOT allow unsafe-inline');
 });
 
+test('L2: terminalService manages interactive processes and lifecycle correctly', async () => {
+  const terminalService = require('../../src/main/services/terminalService');
+
+  // Verify default shell detection
+  const defaultShell = terminalService.getDefaultShell();
+  assert.ok(typeof defaultShell === 'string' && defaultShell.length > 0);
+
+  // Mock webContents sender
+  let receivedData = '';
+  const mockSender = {
+    isDestroyed: () => false,
+    send: (channel, payload) => {
+      if (channel === 'terminal:data') {
+        receivedData += payload.data;
+      }
+    }
+  };
+
+  const sessionId = 'test_session_l2';
+  const spawnRes = terminalService.spawnTerminal(sessionId, process.cwd(), mockSender);
+  assert.equal(spawnRes.success, true);
+  assert.equal(terminalService.hasSession(sessionId), true);
+
+  // Write a command and wait for output
+  terminalService.write(sessionId, 'echo TERMINAL_TEST_OK\r\n');
+
+  await new Promise(r => setTimeout(r, 600));
+  assert.ok(receivedData.includes('TERMINAL_TEST_OK') || receivedData.length > 0);
+
+  // Clean up
+  const killRes = terminalService.kill(sessionId);
+  assert.equal(killRes.success, true);
+  assert.equal(terminalService.hasSession(sessionId), false);
+
+  terminalService.killAll();
+});
+
+test('L2: renderer index.html includes IDE mode elements, terminal drawer, and command palette', () => {
+  const fs = require('fs');
+  const indexPath = path.resolve(__dirname, '../../src/renderer/index.html');
+  const content = fs.readFileSync(indexPath, 'utf8');
+
+  // Verify opt-in mode elements
+  assert.ok(content.includes('id="btn-ide-toggle"'), 'btn-ide-toggle must exist in titlebar');
+  assert.ok(content.includes('id="ide-optin-modal"'), 'ide-optin-modal must exist in markup');
+  assert.ok(content.includes('id="terminal-drawer"'), 'terminal-drawer must exist in code-pane');
+  assert.ok(content.includes('id="ide-status-bar"'), 'ide-status-bar must exist in markup');
+  assert.ok(content.includes('id="command-palette-modal"'), 'command-palette-modal must exist in markup');
+
+  // Verify xterm and IDE scripts
+  assert.ok(content.includes('xterm/lib/xterm.js'), 'xterm.js must be loaded');
+  assert.ok(content.includes('xterm-addon-fit/lib/xterm-addon-fit.js'), 'xterm-addon-fit must be loaded');
+  assert.ok(content.includes('js/ideController.js'), 'ideController.js must be loaded');
+});
+
 

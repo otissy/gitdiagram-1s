@@ -7,6 +7,7 @@ const gitService = require('./services/gitService');
 const diagramService = require('./services/diagramService');
 const symbolService = require('./services/symbolService');
 const { GitHubRemoteService } = require('./services/githubRemoteService');
+const terminalService = require('./services/terminalService');
 
 let githubRemoteService = null;
 let mainWindow = null;
@@ -106,6 +107,7 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
+    try { terminalService.killAll(); } catch (e) {}
     if (currentWatcher) {
       try { currentWatcher.close(); } catch (e) {}
     }
@@ -322,6 +324,23 @@ function registerIpcHandlers() {
 
   ipcMain.handle('window:isMaximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false;
+  });
+
+  // Terminal Services (Opt-in IDE Mode)
+  ipcMain.handle('terminal:spawn', (event, sessionId, cwd) => {
+    return terminalService.spawnTerminal(sessionId, cwd, event.sender);
+  });
+
+  ipcMain.handle('terminal:write', (event, sessionId, data) => {
+    return terminalService.write(sessionId, data);
+  });
+
+  ipcMain.handle('terminal:kill', (event, sessionId) => {
+    return terminalService.kill(sessionId);
+  });
+
+  ipcMain.handle('terminal:killAll', () => {
+    return terminalService.killAll();
   });
 }
 

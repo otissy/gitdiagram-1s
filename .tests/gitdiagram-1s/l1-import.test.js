@@ -50,3 +50,12 @@ test('L1: securityService and securityUtils load without error', () => {
   const rendererSec = require('../../src/renderer/js/securityUtils');
   assert.equal(typeof rendererSec.escapeHtml, 'function');
 });
+
+test('L1: terminalService loads without error and exposes lifecycle methods', () => {
+  const terminalService = require('../../src/main/services/terminalService');
+  assert.equal(typeof terminalService.spawnTerminal, 'function');
+  assert.equal(typeof terminalService.write, 'function');
+  assert.equal(typeof terminalService.kill, 'function');
+  assert.equal(typeof terminalService.killAll, 'function');
+  assert.equal(typeof terminalService.getDefaultShell, 'function');
+});

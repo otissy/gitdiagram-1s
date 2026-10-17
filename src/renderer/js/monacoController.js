@@ -105,10 +105,27 @@ class MonacoController {
           originalEditable: false
         });
 
+        // Listen to model changes for dirty indicator (IDE Mode)
+        this.editor.onDidChangeModelContent(() => {
+          if (this.activeTab && !this.activeTab.isDirty) {
+            this.activeTab.isDirty = true;
+            this.renderTabs();
+          }
+        });
+
+        // Add Ctrl+S command for file saving
+        this.editor.addCommand(this.monaco.KeyMod.CtrlCmd | this.monaco.KeyCode.KeyS, () => {
+          this.saveActiveFile();
+        });
+
         // Track cursor position
         this.editor.onDidChangeCursorPosition((e) => {
+          const coord = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
           if (this.sbCursor) {
-            this.sbCursor.textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+            this.sbCursor.textContent = coord;
+          }
+          if (window.ideController) {
+            window.ideController.updateStatusBar({ cursor: coord });
           }
         });
 
@@ -192,6 +209,12 @@ class MonacoController {
 
     if (this.sbLang) {
       this.sbLang.textContent = tab.language.charAt(0).toUpperCase() + tab.language.slice(1);
+    }
+    if (window.ideController) {
+      window.ideController.updateStatusBar({
+        language: tab.language.charAt(0).toUpperCase() + tab.language.slice(1),
+        encoding: 'UTF-8'
+      });
     }
 
     // Update symbols outline controller
@@ -310,6 +333,14 @@ class MonacoController {
       const name = document.createElement('span');
       name.textContent = tab.name;
 
+      if (tab.isDirty) {
+        const dirtyDot = document.createElement('span');
+        dirtyDot.className = 'tab-dirty-dot';
+        dirtyDot.textContent = '●';
+        dirtyDot.title = 'Unsaved changes';
+        tabEl.appendChild(dirtyDot);
+      }
+
       const closeBtn = document.createElement('span');
       closeBtn.className = 'tab-close';
       closeBtn.innerHTML = '&times;';
@@ -321,6 +352,38 @@ class MonacoController {
 
       tabEl.onclick = () => this.setActiveTab(tab);
       this.tabsContainer.appendChild(tabEl);
+    }
+  }
+
+  /**
+   * Set editor readOnly property (used by IDE Mode toggle)
+   */
+  setReadOnly(isReadOnly) {
+    if (this.editor) {
+      this.editor.updateOptions({ readOnly: isReadOnly });
+    }
+  }
+
+  /**
+   * Save currently active file to disk
+   */
+  async saveActiveFile() {
+    if (!this.activeTab || this.activeTab.isBinary) return;
+    const model = this.models.get(this.activeTab.path);
+    if (!model) return;
+
+    const content = model.getValue();
+    try {
+      const res = await window.api.saveFile(this.activeTab.path, content);
+      if (res && res.success) {
+        this.activeTab.isDirty = false;
+        this.renderTabs();
+        if (window.diagramRenderer) {
+          window.diagramRenderer.showToast(`Saved ${this.activeTab.name}`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save file:', err);
     }
   }
 

@@ -42,6 +42,7 @@ class App {
     this.loadRecents();
     this.setupFileWatcher();
     this.initGitHubModal();
+    if (window.ideController) window.ideController.init();
   }
 
   /**
@@ -375,6 +376,11 @@ class App {
 
     // 2. Load Git Status & Log
     const gitInfo = await window.gitController.loadGitInfo(folderPath);
+
+    if (window.ideController) {
+      const branchName = gitInfo && gitInfo.gitStatus && gitInfo.gitStatus.branch ? gitInfo.gitStatus.branch : 'main';
+      window.ideController.updateStatusBar({ branch: branchName });
+    }
 
     // 3. Populate File Explorer
     window.fileExplorer.setData(this.currentScanResult.tree, gitInfo ? gitInfo.gitStatus : null);
