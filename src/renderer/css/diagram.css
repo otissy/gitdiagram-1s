@@ -164,7 +164,7 @@
   border-radius: 50%;
 }
 
-/* SVG Interactive Canvas */
+/* SVG Interactive Canvas with GitDiagram signature dot-grid blueprint background */
 #diagram-svg-container {
   flex: 1;
   width: 100%;
@@ -172,6 +172,9 @@
   overflow: hidden;
   position: relative;
   cursor: grab;
+  background-color: #0b0f15;
+  background-image: radial-gradient(rgba(240, 246, 252, 0.09) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
 }
 
 #diagram-svg-container:active {
@@ -184,59 +187,84 @@
   display: block;
 }
 
-/* Cluster Box */
+/* Cluster Box - GitDiagram Glassmorphism */
 .diagram-cluster {
-  fill: rgba(22, 27, 34, 0.45);
+  fill: rgba(18, 24, 33, 0.65);
   stroke: rgba(240, 246, 252, 0.12);
-  stroke-dasharray: 4 4;
-  rx: 8;
-  ry: 8;
+  stroke-width: 1.2;
+  rx: 10;
+  ry: 10;
   transition: all 0.2s ease;
 }
 
 .diagram-cluster:hover {
   fill: rgba(31, 111, 235, 0.08);
   stroke: rgba(88, 166, 255, 0.35);
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.4));
+}
+
+.diagram-cluster-header {
+  fill: rgba(31, 111, 235, 0.1);
+  stroke: rgba(240, 246, 252, 0.08);
+  stroke-width: 1;
 }
 
 .diagram-cluster-label {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  fill: var(--text-muted);
+  fill: var(--text-primary);
   user-select: none;
 }
 
-/* Node Elements */
+.diagram-cluster-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--accent-blue);
+  font-weight: 600;
+}
+
+/* Node Elements - GitDiagram Card Aesthetics */
 .diagram-node {
   cursor: pointer;
   transition: opacity 0.2s ease, filter 0.2s ease, transform 0.1s ease;
 }
 
-.diagram-node rect {
+.diagram-node rect.node-card {
   rx: 6;
   ry: 6;
   fill: #161b22;
-  stroke: rgba(240, 246, 252, 0.15);
-  stroke-width: 1.5;
+  stroke: rgba(240, 246, 252, 0.14);
+  stroke-width: 1.2;
   transition: all 0.15s ease;
 }
 
-.diagram-node:hover rect {
-  stroke-width: 2;
-  fill: #21262d;
-  filter: drop-shadow(0 4px 12px rgba(88, 166, 255, 0.3));
+.diagram-node:hover rect.node-card {
+  stroke-width: 1.8;
+  stroke: var(--accent-blue);
+  fill: #1f2630;
+  filter: drop-shadow(0 4px 14px rgba(88, 166, 255, 0.35));
 }
 
-.diagram-node.active rect {
+.diagram-node.active rect.node-card {
   stroke: var(--accent-blue);
-  stroke-width: 2.5;
-  fill: #1f2937;
-  filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.6));
+  stroke-width: 2.2;
+  fill: #1a2332;
+  filter: drop-shadow(0 0 12px rgba(88, 166, 255, 0.8));
+  animation: pulseNode 1.8s infinite alternate ease-in-out;
+}
+
+@keyframes pulseNode {
+  0% {
+    filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.5));
+  }
+  100% {
+    filter: drop-shadow(0 0 16px rgba(88, 166, 255, 0.95));
+  }
 }
 
 .diagram-node.dimmed {
-  opacity: 0.15;
+  opacity: 0.18;
 }
 
 .diagram-node-label {

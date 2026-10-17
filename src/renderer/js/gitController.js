@@ -157,9 +157,12 @@ class GitController {
       item.appendChild(badge);
       item.appendChild(name);
 
-      // Click -> Open Monaco Diff Editor!
+      // Click -> Open Monaco Diff Editor & pan diagram!
       item.onclick = async () => {
         try {
+          if (window.diagramRenderer) {
+            window.diagramRenderer.selectNodeByPath(f.path);
+          }
           const diffResult = await window.api.getGitDiff(this.currentRepoPath, f.path);
           window.monacoController.openDiff(
             f.path,

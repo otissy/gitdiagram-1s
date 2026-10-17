@@ -67,9 +67,21 @@ class GitHubRemoteService {
     }
   }
 
-  // Get current token
+  // Get configured token
   getToken() {
     return this.getConfig().token || null;
+  }
+
+  // Get effective token (configured token or fallback to gh CLI auth)
+  getEffectiveToken() {
+    const saved = this.getToken();
+    if (saved) return saved;
+    try {
+      const { execSync } = require('child_process');
+      const token = execSync('gh auth token', { encoding: 'utf8', timeout: 2000 }).trim();
+      if (token && token.startsWith('gh')) return token;
+    } catch (e) {}
+    return null;
   }
 
   // Verify and set GitHub Token
@@ -226,6 +238,137 @@ class GitHubRemoteService {
         fullName,
         isCached: false
       };
+    }
+  }
+
+  // Detect remote origin from a local folder
+  async getRepoRemote(repoPath) {
+    if (!repoPath) return null;
+    const res = await this.runGitCommand(repoPath, ['remote', '-v']);
+    if (!res.success || !res.stdout) return null;
+    const lines = res.stdout.split(/\r?\n/).filter(Boolean);
+    for (const line of lines) {
+      const parts = line.split(/\s+/);
+      if (parts.length >= 2) {
+        const parsed = parseRepoIdentifier(parts[1]);
+        if (parsed) return parsed;
+      }
+    }
+    return null;
+  }
+
+  // Fetch full GitHub repo details, pull requests, issues, branches, and ownership status
+  async getRepoFullDetails(repoPath, ownerInput = null, repoInput = null) {
+    let owner = ownerInput;
+    let repo = repoInput;
+
+    if (!owner || !repo) {
+      const remote = await this.getRepoRemote(repoPath);
+      if (!remote) {
+        return { success: false, hasRemote: false, error: 'No GitHub remote repository found for this folder.' };
+      }
+      owner = remote.owner;
+      repo = remote.repo;
+    }
+
+    const token = this.getEffectiveToken();
+    const headers = {
+      'User-Agent': 'GitDiagram-1s-Desktop',
+      'Accept': 'application/vnd.github.v3+json'
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Also get active user info to verify ownership
+    let currentUser = this.getUser();
+    if (!currentUser && token) {
+      try {
+        const uRes = await fetch('https://api.github.com/user', { headers });
+        if (uRes.ok) {
+          const uData = await uRes.json();
+          currentUser = { login: uData.login, name: uData.name || uData.login, avatar_url: uData.avatar_url };
+          this.saveConfig({ token, user: currentUser });
+        }
+      } catch (e) {}
+    }
+
+    try {
+      // 1. Fetch Repository Metadata
+      const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+      if (!repoRes.ok) {
+        return { success: false, hasRemote: true, error: `GitHub API error: ${repoRes.statusText}` };
+      }
+      const r = await repoRes.json();
+
+      const isOwner = !!(
+        (currentUser && currentUser.login && currentUser.login.toLowerCase() === r.owner.login.toLowerCase()) ||
+        (r.permissions && (r.permissions.admin || r.permissions.push))
+      );
+
+      // 2. Fetch Pull Requests, Issues, and Branches in parallel
+      const [prRes, issueRes, branchRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/${owner}/${repo}/pulls?state=all&per_page=30`, { headers }).catch(() => null),
+        fetch(`https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=30`, { headers }).catch(() => null),
+        fetch(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=50`, { headers }).catch(() => null)
+      ]);
+
+      const pullRequests = (prRes && prRes.ok ? await prRes.json() : []).map(p => ({
+        number: p.number,
+        title: p.title,
+        state: p.state,
+        draft: p.draft,
+        user: { login: p.user.login, avatar_url: p.user.avatar_url },
+        htmlUrl: p.html_url,
+        createdAt: p.created_at,
+        headBranch: p.head ? p.head.ref : null,
+        baseBranch: p.base ? p.base.ref : null
+      }));
+
+      const rawIssues = issueRes && issueRes.ok ? await issueRes.json() : [];
+      const issues = rawIssues
+        .filter(i => !i.pull_request)
+        .map(i => ({
+          number: i.number,
+          title: i.title,
+          state: i.state,
+          user: { login: i.user.login, avatar_url: i.user.avatar_url },
+          htmlUrl: i.html_url,
+          comments: i.comments,
+          createdAt: i.created_at,
+          labels: (i.labels || []).map(l => ({ name: l.name, color: l.color }))
+        }));
+
+      const branches = (branchRes && branchRes.ok ? await branchRes.json() : []).map(b => ({
+        name: b.name,
+        protected: b.protected
+      }));
+
+      return {
+        success: true,
+        hasRemote: true,
+        isOwner,
+        currentUser,
+        repo: {
+          id: r.id,
+          name: r.name,
+          fullName: r.full_name,
+          owner: { login: r.owner.login, avatar_url: r.owner.avatar_url, htmlUrl: r.owner.html_url },
+          private: r.private,
+          description: r.description,
+          defaultBranch: r.default_branch,
+          stars: r.stargazers_count,
+          forks: r.forks_count,
+          openIssuesCount: r.open_issues_count,
+          htmlUrl: r.html_url,
+          cloneUrl: r.clone_url
+        },
+        pullRequests,
+        issues,
+        branches
+      };
+    } catch (err) {
+      return { success: false, hasRemote: true, error: err.message };
     }
   }
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -46,10 +46,10 @@ function saveRecentRepo(folderPath) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 920,
-    minWidth: 1000,
-    minHeight: 650,
+    width: 1366,
+    height: 768, // 16:9 widescreen proportion (comfortable height)
+    minWidth: 960,
+    minHeight: 520,
     frame: false, // Custom modern Windows title bar
     title: 'GitDiagram 1s',
     backgroundColor: '#0d1117',
@@ -304,6 +304,19 @@ function registerIpcHandlers() {
     } catch (err) {
       return { success: false, error: err.message };
     }
+  });
+
+  ipcMain.handle('github:getRepoDetails', async (event, folderPath, owner, repo) => {
+    const safePath = folderPath ? sanitizePathArg(folderPath) : null;
+    return await githubRemoteService.getRepoFullDetails(safePath, owner, repo);
+  });
+
+  ipcMain.handle('shell:openExternal', async (event, url) => {
+    if (typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://'))) {
+      await shell.openExternal(url);
+      return { success: true };
+    }
+    return { success: false, error: 'Invalid URL' };
   });
 
   // Window Controls

@@ -199,48 +199,84 @@ class DiagramRenderer {
       clusterGroups.get(node.cluster).push(node);
     }
 
-    // Layout clusters in a multi-column grid
-    const clusterLayouts = [];
-    const nodeWidth = 140;
-    const nodeHeight = 34;
-    const padding = 16;
-    let startX = 60;
-    let startY = 60;
-    let colHeight = 0;
-    const colWidth = 200;
+    // Helper to determine architectural tier (Left-to-Right Layering)
+    const getArchitecturalRank = (clusterId, cNodes) => {
+      const c = clusterId.toLowerCase();
+      if (c === 'root' || c.includes('main') || c.includes('entry') || c.includes('cli') || c.includes('bin')) return 0;
+      if (c.includes('renderer') || c.includes('component') || c.includes('page') || c.includes('view') || c.includes('ui') || c.includes('route')) return 1;
+      if (c.includes('service') || c.includes('controller') || c.includes('handler') || c.includes('middleware') || c.includes('logic')) return 2;
+      if (c.includes('model') || c.includes('type') || c.includes('util') || c.includes('helper') || c.includes('config') || c.includes('db') || c.includes('schema') || c.includes('test')) return 3;
+      const roles = cNodes.map(n => n.role);
+      if (roles.includes('entry')) return 0;
+      if (roles.includes('component')) return 1;
+      if (roles.includes('service')) return 2;
+      return 2;
+    };
 
-    let colIndex = 0;
-    let rowIndex = 0;
-    const maxCols = Math.max(2, Math.floor(this.container.clientWidth / (colWidth + 40)));
-
+    // Partition clusters into architectural rank columns (0: Entry -> 1: Views -> 2: Services -> 3: Utils/Data)
+    const rankBuckets = [[], [], [], []];
     for (const [clusterId, cNodes] of clusterGroups.entries()) {
-      const cWidth = colWidth;
-      const cHeight = padding * 2 + 20 + cNodes.length * (nodeHeight + 8);
-
-      const cx = startX + (colIndex % maxCols) * (cWidth + 40);
-      const cy = startY + Math.floor(colIndex / maxCols) * 360;
-
-      clusterLayouts.push({
-        id: clusterId,
-        x: cx,
-        y: cy,
-        width: cWidth,
-        height: cHeight,
-        nodes: cNodes
-      });
-
-      // Position nodes inside cluster
-      cNodes.forEach((node, idx) => {
-        node.x = cx + padding;
-        node.y = cy + padding + 22 + idx * (nodeHeight + 8);
-        node.width = nodeWidth;
-        node.height = nodeHeight;
-      });
-
-      colIndex++;
+      const rank = getArchitecturalRank(clusterId, cNodes);
+      rankBuckets[rank].push({ id: clusterId, nodes: cNodes });
     }
 
-    // Draw cluster boxes
+    // Active columns only (skip empty ranks so layout is compact)
+    const activeColumns = rankBuckets
+      .map((clustersInRank, rankIdx) => ({ rank: rankIdx, clusters: clustersInRank }))
+      .filter(col => col.clusters.length > 0);
+
+    const clusterLayouts = [];
+    const padding = 12;
+    const startX = 60;
+    const startY = 50;
+    const colWidth = 320;
+    const colGapX = 50;
+
+    let currentX = startX;
+
+    for (const col of activeColumns) {
+      let currentY = startY;
+
+      for (const cluster of col.clusters) {
+        const cNodes = cluster.nodes;
+        // Multi-column files inside cluster if more than 3 files (drastically reduces height)
+        const innerCols = cNodes.length > 3 ? 2 : 1;
+        const innerNodeWidth = innerCols === 2 ? Math.floor((colWidth - padding * 2 - 10) / 2) : (colWidth - padding * 2);
+        const nodeHeight = 28;
+        const rows = Math.ceil(cNodes.length / innerCols);
+        const cHeight = padding * 2 + 24 + rows * (nodeHeight + 6);
+
+        const cx = currentX;
+        const cy = currentY;
+
+        clusterLayouts.push({
+          id: cluster.id,
+          x: cx,
+          y: cy,
+          width: colWidth,
+          height: cHeight,
+          nodes: cNodes
+        });
+
+        // Position nodes inside cluster with strict grid offsets (ZERO OVERLAPPING GUARANTEED)
+        cNodes.forEach((node, idx) => {
+          const colIdx = idx % innerCols;
+          const rowIdx = Math.floor(idx / innerCols);
+          node.x = cx + padding + colIdx * (innerNodeWidth + 10);
+          node.y = cy + padding + 22 + rowIdx * (nodeHeight + 6);
+          node.width = innerNodeWidth;
+          node.height = nodeHeight;
+        });
+
+        // Strict vertical spacing between clusters in the same column (ZERO OVERLAPPING GUARANTEED)
+        currentY += cHeight + 28;
+      }
+
+      // Advance X for next architectural rank column
+      currentX += colWidth + colGapX;
+    }
+
+    // Draw cluster boxes (GitDiagram Glassmorphism styling)
     const clusterG = this.zoomGroup.append('g').attr('class', 'clusters-layer');
     const clusterElements = clusterG.selectAll('.diagram-cluster-box')
       .data(clusterLayouts)
@@ -248,6 +284,7 @@ class DiagramRenderer {
       .append('g')
       .attr('class', 'diagram-cluster-box');
 
+    // Outer cluster card
     clusterElements.append('rect')
       .attr('class', 'diagram-cluster')
       .attr('x', d => d.x)
@@ -255,13 +292,31 @@ class DiagramRenderer {
       .attr('width', d => d.width)
       .attr('height', d => d.height);
 
+    // Header background strip
+    clusterElements.append('rect')
+      .attr('class', 'diagram-cluster-header')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y)
+      .attr('width', d => d.width)
+      .attr('height', 24)
+      .attr('rx', 10);
+
+    // Folder Label
     clusterElements.append('text')
       .attr('class', 'diagram-cluster-label')
       .attr('x', d => d.x + 12)
-      .attr('y', d => d.y + 18)
-      .text(d => `📁 ${d.id === 'root' ? '/' : d.id} (${d.nodes.length})`);
+      .attr('y', d => d.y + 16)
+      .text(d => `📁 ${d.id === 'root' ? '/' : d.id}`);
 
-    // Draw links
+    // Files Count Badge
+    clusterElements.append('text')
+      .attr('class', 'diagram-cluster-count')
+      .attr('x', d => d.x + d.width - 12)
+      .attr('y', d => d.y + 16)
+      .attr('text-anchor', 'end')
+      .text(d => `${d.nodes.length} files`);
+
+    // Draw links with clean, non-overlapping cubic bezier paths
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
     const nodeMap = new Map(filteredNodes.map(n => [n.id, n]));
 
@@ -275,12 +330,35 @@ class DiagramRenderer {
         const src = nodeMap.get(typeof d.source === 'object' ? d.source.id : d.source);
         const tgt = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
         if (!src || !tgt) return '';
+
+        // Left-to-right connection
+        if (src.x + src.width <= tgt.x) {
+          const x1 = src.x + src.width;
+          const y1 = src.y + src.height / 2;
+          const x2 = tgt.x;
+          const y2 = tgt.y + tgt.height / 2;
+          const dx = Math.max(30, (x2 - x1) * 0.45);
+          return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        }
+
+        // Right-to-left (feedback/backward) connection: route cleanly around without cutting across nodes
+        if (src.x >= tgt.x + tgt.width) {
+          const x1 = src.x;
+          const y1 = src.y + src.height / 2;
+          const x2 = tgt.x + tgt.width;
+          const y2 = tgt.y + tgt.height / 2;
+          const dx = Math.max(40, (x1 - x2) * 0.35);
+          const dy = (y2 - y1) * 0.25;
+          return `M ${x1} ${y1} C ${x1 - dx} ${y1 - dy}, ${x2 + dx} ${y2 + dy}, ${x2} ${y2}`;
+        }
+
+        // Same column / vertical connection: clean side arc
         const x1 = src.x + src.width;
         const y1 = src.y + src.height / 2;
-        const x2 = tgt.x;
+        const x2 = tgt.x + tgt.width;
         const y2 = tgt.y + tgt.height / 2;
-        const dx = (x2 - x1) * 0.5;
-        return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        const arcX = Math.max(x1, x2) + 25;
+        return `M ${x1} ${y1} C ${arcX} ${y1}, ${arcX} ${y2}, ${x2} ${y2}`;
       });
 
     // Draw nodes
@@ -325,7 +403,9 @@ class DiagramRenderer {
       .force('link', d3.forceLink(filteredLinks).id(d => d.id).distance(110))
       .force('charge', d3.forceManyBody().strength(-350))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(50));
+      .force('x', d3.forceX(width / 2).strength(0.04))
+      .force('y', d3.forceY(height / 2).strength(0.12)) // Compress vertical height for 16:9 widescreen
+      .force('collision', d3.forceCollide().radius(48));
 
     // Links layer
     const linkG = this.zoomGroup.append('g').attr('class', 'links-layer');
@@ -953,30 +1033,45 @@ class DiagramRenderer {
 
     // Node rectangle
     nodeSelection.append('rect')
+      .attr('class', 'node-card')
       .attr('width', d => d.width || 130)
-      .attr('height', d => d.height || 34)
+      .attr('height', d => d.height || 28)
+      .attr('rx', 6)
+      .attr('ry', 6)
       .attr('stroke', d => this.getRoleColor(d.role));
 
-    // Role color dot
+    // GitDiagram Left Role Color Accent Strip
+    nodeSelection.append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', 3.5)
+      .attr('height', d => d.height || 28)
+      .attr('rx', 1.5)
+      .attr('fill', d => this.getRoleColor(d.role));
+
+    // Role color dot indicator
     nodeSelection.append('circle')
       .attr('cx', 12)
-      .attr('cy', d => (d.height || 34) / 2)
-      .attr('r', 4)
+      .attr('cy', d => (d.height || 28) / 2)
+      .attr('r', 3.5)
       .attr('fill', d => this.getRoleColor(d.role));
 
     // Node label
     nodeSelection.append('text')
       .attr('class', 'diagram-node-label')
-      .attr('x', 24)
-      .attr('y', 17)
-      .text(d => d.name.length > 14 ? d.name.substring(0, 13) + '…' : d.name);
+      .attr('x', 22)
+      .attr('y', d => (d.height || 28) > 30 ? 17 : 14)
+      .text(d => {
+        const maxLen = (d.width || 130) > 160 ? 22 : 13;
+        return d.name.length > maxLen ? d.name.substring(0, maxLen - 1) + '…' : d.name;
+      });
 
-    // Line count badge
+    // Line count badge / size
     nodeSelection.append('text')
       .attr('class', 'diagram-node-badge')
-      .attr('x', 24)
-      .attr('y', 29)
-      .text(d => `${d.lines ? d.lines + ' lines' : (d.size / 1024).toFixed(1) + ' KB'}`);
+      .attr('x', 22)
+      .attr('y', d => (d.height || 28) > 30 ? 29 : 23)
+      .text(d => `${d.lines ? d.lines + 'L' : (d.size / 1024).toFixed(1) + ' KB'}`);
 
     // Click handler -> Open file in Monaco!
     nodeSelection.on('click', (event, d) => {
@@ -1082,10 +1177,65 @@ class DiagramRenderer {
   }
 
   /**
-   * Select a node externally from File Explorer
+   * Select a node externally from File Explorer, Monaco tabs, or Search
+   * Smoothly pans and centers the diagram camera on the selected file node
    */
   selectNodeByPath(relPath) {
-    this.zoomGroup.selectAll('.diagram-node').classed('active', d => d.relativePath === relPath);
+    if (!relPath) return;
+    const cleanPath = relPath.replace(/\\/g, '/');
+
+    // In Symbols mode: if target is a different file, update activeTargetFile
+    if (this.currentMode === 'sym') {
+      if (this.activeTargetRelPath !== cleanPath) {
+        const fileObj = this.flatFiles ? this.flatFiles.find(f => f.relativePath === cleanPath) : null;
+        if (fileObj) {
+          this.setActiveTargetFile(fileObj.path, cleanPath);
+          return;
+        }
+      }
+    }
+
+    let targetNode = null;
+
+    if (this.currentMode === 'tree') {
+      // Tree mode uses hierarchy descendants
+      this.zoomGroup.selectAll('.tree-node-item').each(function(d) {
+        const match = d.data && d.data.fileNode && (d.data.fileNode.relativePath === cleanPath || d.data.fileNode.path === cleanPath);
+        d3.select(this).classed('active', match);
+        if (match && !targetNode) {
+          targetNode = { x: d.y + 60, y: d.x + 60 };
+        }
+      });
+    } else {
+      // Architecture clusters, Import dependencies, or Git DAG
+      this.zoomGroup.selectAll('.diagram-node').each(function(d) {
+        const match = d.relativePath === cleanPath || d.id === cleanPath || (d.path && d.path.replace(/\\/g, '/') === cleanPath);
+        d3.select(this)
+          .classed('active', match)
+          .classed('dimmed', !match);
+        if (match && !targetNode) {
+          targetNode = d;
+        }
+      });
+    }
+
+    // Camera moves with you: smoothly pan and center target node on the diagram
+    if (targetNode && targetNode.x !== undefined && targetNode.y !== undefined) {
+      const fullWidth = this.container.clientWidth;
+      const fullHeight = this.container.clientHeight;
+
+      const currentK = (this.svg.node() && d3.zoomTransform(this.svg.node()).k) || 1.15;
+      const scale = Math.max(1.0, Math.min(1.35, currentK));
+
+      const transform = d3.zoomIdentity
+        .translate(fullWidth / 2 - targetNode.x * scale, fullHeight / 2 - targetNode.y * scale)
+        .scale(scale);
+
+      this.svg.transition()
+        .duration(500)
+        .ease(d3.easeCubicOut)
+        .call(this.zoom.transform, transform);
+    }
   }
 
   /**
@@ -1120,7 +1270,8 @@ class DiagramRenderer {
       const midX = bounds.x + width / 2;
       const midY = bounds.y + height / 2;
 
-      const scale = 0.85 / Math.max(width / fullWidth, height / fullHeight);
+      const rawScale = 0.88 / Math.max(width / fullWidth, height / fullHeight);
+      const scale = Math.max(0.68, Math.min(1.15, rawScale));
       const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
 
       this.svg.transition().duration(400).call(

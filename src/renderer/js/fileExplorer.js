@@ -73,10 +73,12 @@ class FileExplorer {
       arrow.className = `tree-node-arrow ${isExpanded ? 'expanded' : ''}`;
       arrow.innerHTML = '▶';
 
-      // Folder icon
+      // VS Code Folder icon
       const icon = document.createElement('span');
       icon.className = 'tree-node-icon';
-      icon.innerHTML = isExpanded ? '📂' : '📁';
+      icon.innerHTML = typeof window.getVsCodeIcon === 'function' 
+        ? window.getVsCodeIcon(node.name, null, true, isExpanded)
+        : (isExpanded ? '📂' : '📁');
 
       // Name
       const name = document.createElement('span');
@@ -115,10 +117,12 @@ class FileExplorer {
       fileRow.dataset.path = node.path;
       fileRow.dataset.rel = node.relativePath;
 
-      // File icon
+      // VS Code File icon
       const icon = document.createElement('span');
       icon.className = 'tree-node-icon';
-      icon.innerHTML = this.getFileIcon(node.extension);
+      icon.innerHTML = typeof window.getVsCodeIcon === 'function'
+        ? window.getVsCodeIcon(node.name, node.extension, false, false)
+        : this.getFileIcon(node.extension);
 
       // Name
       const name = document.createElement('span');
@@ -194,7 +198,10 @@ class FileExplorer {
     });
   }
 
-  getFileIcon(ext) {
+  getFileIcon(ext, name = '') {
+    if (typeof window.getVsCodeIcon === 'function') {
+      return window.getVsCodeIcon(name, ext, false, false);
+    }
     const e = (ext || '').toLowerCase();
     if (['.ts', '.tsx'].includes(e)) return '<span style="color: #3178c6; font-weight: bold; font-size: 11px;">TS</span>';
     if (['.js', '.jsx', '.mjs'].includes(e)) return '<span style="color: #f7df1e; font-weight: bold; font-size: 11px;">JS</span>';

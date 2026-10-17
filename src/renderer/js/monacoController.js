@@ -227,6 +227,11 @@ class MonacoController {
       window.diagramRenderer.setActiveTargetFile(tab.path, tab.relativePath);
     }
 
+    // Camera moves with you: smoothly pan and center clicked file node on the diagram
+    if (window.diagramRenderer && !tab.isBinary) {
+      window.diagramRenderer.selectNodeByPath(tab.relativePath);
+    }
+
     // Trigger layout
     setTimeout(() => this.editor.layout(), 20);
   }
@@ -326,9 +331,9 @@ class MonacoController {
       tabEl.className = `editor-tab ${this.activeTab === tab ? 'active' : ''}`;
       tabEl.title = tab.path;
 
-      // File icon
+      // VS Code File icon
       const icon = document.createElement('span');
-      icon.innerHTML = this.getFileIconSvg(tab.extension);
+      icon.innerHTML = this.getFileIconSvg(tab.extension, tab.name);
 
       const name = document.createElement('span');
       name.textContent = tab.name;
@@ -428,9 +433,12 @@ class MonacoController {
   }
 
   /**
-   * File extension icon helper
+   * File extension icon helper (VS Code style)
    */
-  getFileIconSvg(ext) {
+  getFileIconSvg(ext, name = '') {
+    if (typeof window.getVsCodeIcon === 'function') {
+      return window.getVsCodeIcon(name, ext, false, false);
+    }
     const e = (ext || '').toLowerCase();
     if (['.ts', '.tsx'].includes(e)) {
       return '<svg width="14" height="14" viewBox="0 0 24 24" fill="#3178c6"><rect width="24" height="24" rx="4" fill="#3178c6"/><text x="4" y="17" fill="#fff" font-size="12" font-family="sans-serif" font-weight="bold">TS</text></svg>';

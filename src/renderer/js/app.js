@@ -21,6 +21,7 @@ class App {
     this.sidebarGit = document.getElementById('sidebar-content-git');
     this.sidebarCommits = document.getElementById('sidebar-content-commits');
     this.sidebarOutline = document.getElementById('sidebar-content-outline');
+    this.sidebarGithub = document.getElementById('sidebar-content-github');
 
     // Panes
     this.codePane = document.getElementById('code-pane');
@@ -82,35 +83,51 @@ class App {
     const actGit = document.getElementById('act-git');
     const actCommits = document.getElementById('act-commits');
     const actOutline = document.getElementById('act-outline');
+    const actGithub = document.getElementById('act-github');
     const actRefresh = document.getElementById('act-refresh');
 
-    const setSidebarView = (activeBtn, title, explorerDisp, gitDisp, commitsDisp, outlineDisp = 'none') => {
+    const setSidebarView = (activeBtn, title, explorerDisp, gitDisp, commitsDisp, outlineDisp = 'none', githubDisp = 'none') => {
       document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
-      activeBtn.classList.add('active');
+      if (activeBtn) activeBtn.classList.add('active');
       this.sidebarTitle.textContent = title;
       this.sidebarExplorer.style.display = explorerDisp;
       this.sidebarGit.style.display = gitDisp;
       this.sidebarCommits.style.display = commitsDisp;
       if (this.sidebarOutline) this.sidebarOutline.style.display = outlineDisp;
+      if (this.sidebarGithub) this.sidebarGithub.style.display = githubDisp;
     };
 
-    actExplorer.onclick = () => setSidebarView(actExplorer, 'Explorer', 'block', 'none', 'none', 'none');
-    actGit.onclick = () => setSidebarView(actGit, 'Source Control', 'none', 'block', 'none', 'none');
+    actExplorer.onclick = () => setSidebarView(actExplorer, 'Explorer', 'block', 'none', 'none', 'none', 'none');
+    actGit.onclick = () => setSidebarView(actGit, 'Source Control', 'none', 'block', 'none', 'none', 'none');
     actCommits.onclick = () => {
-      setSidebarView(actCommits, 'Commit History', 'none', 'none', 'block', 'none');
+      setSidebarView(actCommits, 'Commit History', 'none', 'none', 'block', 'none', 'none');
       // Also switch diagram to Git DAG!
       const gitModeBtn = document.getElementById('diag-mode-git');
       if (gitModeBtn) gitModeBtn.click();
     };
     if (actOutline) {
       actOutline.onclick = () => {
-        setSidebarView(actOutline, 'Symbols & Outline', 'none', 'none', 'none', 'block');
+        setSidebarView(actOutline, 'Symbols & Outline', 'none', 'none', 'none', 'block', 'none');
         if (window.monacoController && window.monacoController.activeTab) {
           window.outlineController.loadSymbols(window.monacoController.activeTab.path, window.monacoController.activeTab.relativePath);
         }
       };
     }
+    if (actGithub) {
+      actGithub.onclick = () => {
+        setSidebarView(actGithub, 'GitHub Remote', 'none', 'none', 'none', 'none', 'block');
+        if (window.githubController) window.githubController.refresh();
+      };
+    }
     actRefresh.onclick = () => this.reloadRepository();
+
+    this.switchSidebarTab = (tab) => {
+      if (tab === 'explorer') actExplorer.click();
+      else if (tab === 'git') actGit.click();
+      else if (tab === 'commits') actCommits.click();
+      else if (tab === 'outline' && actOutline) actOutline.click();
+      else if (tab === 'github' && actGithub) actGithub.click();
+    };
 
     // View Mode Switcher: Split / Code / Diagram
     const modeSplit = document.getElementById('mode-split');
@@ -263,9 +280,10 @@ class App {
       item.style.cssText = 'padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 4px; color: var(--text-secondary); font-size: 12px;';
       const safeName = typeof escapeHtml === 'function' ? escapeHtml(f.name) : f.name;
       const safeRelPath = typeof escapeHtml === 'function' ? escapeHtml(f.relativePath) : f.relativePath;
+      const fileIcon = typeof window.getVsCodeIcon === 'function' ? window.getVsCodeIcon(f.name, f.extension, false, false) : '<span>📄</span>';
       item.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span>📄</span>
+          ${fileIcon}
           <span style="color: var(--text-primary); font-weight: 500;">${safeName}</span>
           <span style="color: var(--text-muted); font-size: 11px;">${safeRelPath}</span>
         </div>
@@ -395,6 +413,11 @@ class App {
     if (entryFile) {
       window.monacoController.openFile(entryFile.path, entryFile.relativePath);
       window.fileExplorer.highlightFile(entryFile.relativePath);
+    }
+
+    // 6. Connect & Load GitHub Remote details (PRs, Issues, Branches, Ownership)
+    if (window.githubController) {
+      window.githubController.loadRepository(folderPath);
     }
 
     this.loadRecents();

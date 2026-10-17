@@ -31,12 +31,15 @@ contextBridge.exposeInMainWorld('api', {
     logout: () => ipcRenderer.invoke('github:logout'),
     getUserRepos: () => ipcRenderer.invoke('github:getUserRepos'),
     fetchRemoteRepo: (repoInput) => ipcRenderer.invoke('github:fetchRemoteRepo', repoInput),
+    getRepoDetails: (folderPath, owner, repo) => ipcRenderer.invoke('github:getRepoDetails', folderPath, owner, repo),
     onProgress: (callback) => {
       const handler = (event, msg) => callback(msg);
       ipcRenderer.on('github:progress', handler);
       return () => ipcRenderer.removeListener('github:progress', handler);
     }
   },
+
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
   // Terminal Services (Opt-in IDE Mode)
   terminal: {
