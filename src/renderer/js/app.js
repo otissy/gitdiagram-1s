@@ -40,6 +40,7 @@ class App {
     this.bindKeyboardShortcuts();
     this.loadRecents();
     this.setupFileWatcher();
+    this.initGitHubModal();
   }
 
   /**
@@ -412,6 +413,266 @@ class App {
         this.reloadRepository();
       }
     });
+  }
+
+  /**
+   * GitHub Remote & Private Repositories Integration
+   */
+  async initGitHubModal() {
+    const modal = document.getElementById('remote-repo-modal');
+    const btnOpenRemote = document.getElementById('btn-open-remote');
+    const btnWelcomeRemote = document.getElementById('btn-welcome-remote');
+    const btnClose = document.getElementById('btn-close-remote-modal');
+    const btnAuth = document.getElementById('btn-github-auth');
+
+    // Tabs
+    const tabUrl = document.getElementById('modal-tab-url');
+    const tabMyRepos = document.getElementById('modal-tab-myrepos');
+    const tabAuth = document.getElementById('modal-tab-auth');
+
+    const contentUrl = document.getElementById('modal-content-url');
+    const contentMyRepos = document.getElementById('modal-content-myrepos');
+    const contentAuth = document.getElementById('modal-content-auth');
+
+    // Inputs & Buttons
+    const repoInput = document.getElementById('remote-repo-input');
+    const btnFetch = document.getElementById('btn-fetch-remote');
+    const progressContainer = document.getElementById('remote-repo-progress');
+    const progressText = document.getElementById('remote-progress-text');
+    const tokenInput = document.getElementById('github-token-input');
+    const btnSaveToken = document.getElementById('btn-save-token');
+    const btnLogout = document.getElementById('btn-github-logout');
+    const authLabel = document.getElementById('github-auth-label');
+
+    const userCard = document.getElementById('github-user-card');
+    const userAvatar = document.getElementById('github-user-avatar');
+    const userName = document.getElementById('github-user-name');
+    const userMeta = document.getElementById('github-user-meta');
+    const myReposList = document.getElementById('my-repos-list');
+    const filterMyRepos = document.getElementById('filter-my-repos');
+
+    let cachedUserRepos = [];
+
+    // Switch Modal Tabs
+    const switchTab = (activeTab, activeContent) => {
+      [tabUrl, tabMyRepos, tabAuth].forEach(t => t.classList.remove('active'));
+      [contentUrl, contentMyRepos, contentAuth].forEach(c => c.style.display = 'none');
+      activeTab.classList.add('active');
+      activeContent.style.display = 'flex';
+    };
+
+    tabUrl.onclick = () => switchTab(tabUrl, contentUrl);
+    tabMyRepos.onclick = async () => {
+      switchTab(tabMyRepos, contentMyRepos);
+      await loadUserRepos();
+    };
+    tabAuth.onclick = () => switchTab(tabAuth, contentAuth);
+
+    const openModal = (tab = 'url') => {
+      modal.style.display = 'flex';
+      progressContainer.style.display = 'none';
+      if (tab === 'url') tabUrl.click();
+      else if (tab === 'auth') tabAuth.click();
+      else if (tab === 'myrepos') tabMyRepos.click();
+    };
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+      progressContainer.style.display = 'none';
+    };
+
+    if (btnOpenRemote) btnOpenRemote.onclick = () => openModal('url');
+    if (btnWelcomeRemote) btnWelcomeRemote.onclick = () => openModal('url');
+    if (btnAuth) btnAuth.onclick = () => openModal('auth');
+    if (btnClose) btnClose.onclick = closeModal;
+    modal.onclick = (e) => {
+      if (e.target === modal) closeModal();
+    };
+
+    // Quick suggestion pills
+    document.querySelectorAll('.quick-repo-pill').forEach(pill => {
+      pill.onclick = () => {
+        repoInput.value = pill.dataset.repo;
+        btnFetch.click();
+      };
+    });
+
+    // Listen to cloning progress events from main process
+    window.api.github.onProgress((msg) => {
+      progressContainer.style.display = 'flex';
+      progressText.textContent = msg;
+    });
+
+    // Check existing authentication
+    const checkAuthStatus = async () => {
+      const user = await window.api.github.getUser();
+      if (user && user.login) {
+        authLabel.textContent = `@${user.login}`;
+        authLabel.title = `Logged in as @${user.login}`;
+        userCard.style.display = 'flex';
+        userAvatar.src = user.avatar_url;
+        userName.textContent = user.name ? `${user.name} (@${user.login})` : `@${user.login}`;
+        userMeta.textContent = `${user.public_repos} public repos • ${user.total_private_repos} private repos`;
+      } else {
+        authLabel.textContent = 'Login';
+        authLabel.title = 'Authenticate with GitHub';
+        userCard.style.display = 'none';
+      }
+    };
+    await checkAuthStatus();
+
+    // Save Token / Authenticate
+    btnSaveToken.onclick = async () => {
+      const token = tokenInput.value.trim();
+      if (!token) return;
+
+      btnSaveToken.disabled = true;
+      btnSaveToken.textContent = 'Verifying...';
+
+      const res = await window.api.github.setToken(token);
+      btnSaveToken.disabled = false;
+      btnSaveToken.textContent = 'Save & Authenticate';
+
+      if (res.success && res.user) {
+        tokenInput.value = '';
+        await checkAuthStatus();
+        if (window.diagramRenderer) {
+          window.diagramRenderer.showToast(`Logged in as @${res.user.login}`);
+        }
+        tabMyRepos.click();
+      } else {
+        alert(res.error || 'Failed to authenticate token with GitHub.');
+      }
+    };
+
+    // Logout
+    btnLogout.onclick = async () => {
+      await window.api.github.logout();
+      await checkAuthStatus();
+      myReposList.innerHTML = '';
+      if (window.diagramRenderer) {
+        window.diagramRenderer.showToast('Logged out of GitHub');
+      }
+    };
+
+    // Load User's Repositories (Public + Private)
+    const loadUserRepos = async () => {
+      myReposList.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 12px;">Loading repositories from GitHub...</div>';
+      const res = await window.api.github.getUserRepos();
+      if (!res.success) {
+        myReposList.innerHTML = `
+          <div style="padding: 14px; text-align: center; color: var(--text-secondary); font-size: 12px;">
+            <p>${res.error}</p>
+            <button id="btn-goto-auth" class="btn-primary" style="margin-top: 10px; font-size: 11px;">Enter GitHub Token</button>
+          </div>
+        `;
+        const gotoAuth = document.getElementById('btn-goto-auth');
+        if (gotoAuth) gotoAuth.onclick = () => tabAuth.click();
+        return;
+      }
+
+      cachedUserRepos = res.repos || [];
+      renderUserReposList(cachedUserRepos);
+    };
+
+    const renderUserReposList = (repos) => {
+      myReposList.innerHTML = '';
+      if (repos.length === 0) {
+        myReposList.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 12px;">No repositories found.</div>';
+        return;
+      }
+
+      for (const r of repos) {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 6px; cursor: pointer; background: var(--bg-primary); border: 1px solid var(--border-subtle); transition: all 0.12s ease;';
+
+        const left = document.createElement('div');
+        left.style.cssText = 'display: flex; align-items: center; gap: 8px; overflow: hidden;';
+
+        const icon = document.createElement('span');
+        icon.innerHTML = r.private ? '🔒' : '📦';
+        icon.title = r.private ? 'Private Repository' : 'Public Repository';
+
+        const title = document.createElement('span');
+        title.style.cssText = 'font-weight: 500; color: var(--text-primary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+        title.textContent = r.fullName;
+
+        left.appendChild(icon);
+        left.appendChild(title);
+
+        const right = document.createElement('div');
+        right.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); flex-shrink: 0;';
+
+        if (r.language) {
+          const lang = document.createElement('span');
+          lang.textContent = r.language;
+          right.appendChild(lang);
+        }
+
+        if (r.stars > 0) {
+          const stars = document.createElement('span');
+          stars.innerHTML = `★ ${r.stars}`;
+          right.appendChild(stars);
+        }
+
+        item.appendChild(left);
+        item.appendChild(right);
+
+        item.onmouseenter = () => item.style.borderColor = 'var(--accent-blue)';
+        item.onmouseleave = () => item.style.borderColor = 'var(--border-subtle)';
+
+        item.onclick = async () => {
+          closeModal();
+          await fetchAndOpen(r.fullName);
+        };
+
+        myReposList.appendChild(item);
+      }
+    };
+
+    if (filterMyRepos) {
+      filterMyRepos.oninput = (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        const filtered = cachedUserRepos.filter(r => r.fullName.toLowerCase().includes(q));
+        renderUserReposList(filtered);
+      };
+    }
+
+    // Fetch & Clone remote repository
+    const fetchAndOpen = async (repoSlug) => {
+      progressContainer.style.display = 'flex';
+      progressText.textContent = `Fetching ${repoSlug}...`;
+      btnFetch.disabled = true;
+
+      try {
+        const res = await window.api.github.fetchRemoteRepo(repoSlug);
+        progressContainer.style.display = 'none';
+        btnFetch.disabled = false;
+
+        if (res.success && res.path) {
+          closeModal();
+          await this.openRepository(res.path);
+          if (window.diagramRenderer) {
+            window.diagramRenderer.showToast(`Loaded ${res.fullName}!`);
+          }
+        } else {
+          alert(`Failed to load repository: ${res.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        progressContainer.style.display = 'none';
+        btnFetch.disabled = false;
+        alert(`Error: ${err.message}`);
+      }
+    };
+
+    btnFetch.onclick = () => {
+      const slug = repoInput.value.trim();
+      if (slug) fetchAndOpen(slug);
+    };
+
+    repoInput.onkeydown = (e) => {
+      if (e.key === 'Enter') btnFetch.click();
+    };
   }
 }
 

@@ -27,6 +27,12 @@ test('L1: diagramService loads without error', () => {
   assert.equal(typeof diagramService.toMermaid, 'function');
 });
 
+test('L1: githubRemoteService loads without error', () => {
+  const { GitHubRemoteService, parseRepoIdentifier } = require('../../src/main/services/githubRemoteService');
+  assert.equal(typeof GitHubRemoteService, 'function');
+  assert.equal(typeof parseRepoIdentifier, 'function');
+});
+
 test('L1: package.json is valid and points to main', () => {
   const pkg = require('../../package.json');
   assert.equal(pkg.name, 'gitdiagram-1s');

@@ -29,6 +29,18 @@ ipcMain.handle('git:getDiff', async (e, p, f, a, b) => await gitService.getGitDi
 ipcMain.handle('diagram:generate', async (e, p, f, o) => await diagramService.generateDiagram(p, f, o));
 ipcMain.handle('diagram:toMermaid', (e, d) => diagramService.toMermaid(d));
 ipcMain.handle('dialog:saveExport', async () => ({ success: true }));
+ipcMain.handle('github:setToken', () => ({ success: true, user: { login: 'octocat' } }));
+ipcMain.handle('github:getUser', () => ({ login: 'octocat', name: 'Mona Lisa', avatar_url: 'https://github.com/github.png', total_private_repos: 6, public_repos: 14 }));
+ipcMain.handle('github:logout', () => ({ success: true }));
+ipcMain.handle('github:getUserRepos', () => ({
+  success: true,
+  repos: [
+    { fullName: 'octocat/secret-backend', private: true, language: 'Go', stars: 8 },
+    { fullName: 'octocat/my-app', private: true, language: 'TypeScript', stars: 22 },
+    { fullName: 'octocat/open-tools', private: false, language: 'JavaScript', stars: 120 }
+  ]
+}));
+ipcMain.handle('github:fetchRemoteRepo', async () => ({ success: true, path: process.cwd(), fullName: 'octocat/secret-backend' }));
 ipcMain.handle('window:minimize', () => {});
 ipcMain.handle('window:maximize', () => {});
 ipcMain.handle('window:close', () => {});

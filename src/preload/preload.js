@@ -22,6 +22,20 @@ contextBridge.exposeInMainWorld('api', {
   toMermaid: (diagramData) => ipcRenderer.invoke('diagram:toMermaid', diagramData),
   saveExportFile: (defaultName, content, type) => ipcRenderer.invoke('dialog:saveExport', defaultName, content, type),
 
+  // GitHub Remote Repositories (Public & Private)
+  github: {
+    setToken: (token) => ipcRenderer.invoke('github:setToken', token),
+    getUser: () => ipcRenderer.invoke('github:getUser'),
+    logout: () => ipcRenderer.invoke('github:logout'),
+    getUserRepos: () => ipcRenderer.invoke('github:getUserRepos'),
+    fetchRemoteRepo: (repoInput) => ipcRenderer.invoke('github:fetchRemoteRepo', repoInput),
+    onProgress: (callback) => {
+      const handler = (event, msg) => callback(msg);
+      ipcRenderer.on('github:progress', handler);
+      return () => ipcRenderer.removeListener('github:progress', handler);
+    }
+  },
+
   // Window Controls
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),

@@ -113,3 +113,52 @@ test('L2: diagramService resolves relative imports to file paths', () => {
   const resolved2 = diagramService.resolveImportToFile('src/components/Button.tsx', '../utils/format', fileMap);
   assert.equal(resolved2, 'src/utils/format.js');
 });
+
+test('L2: parseRepoIdentifier parses slugs, URLs, and SSH remotes', () => {
+  const { parseRepoIdentifier } = require('../../src/main/services/githubRemoteService');
+
+  const slug = parseRepoIdentifier('facebook/react');
+  assert.deepEqual(slug, { owner: 'facebook', repo: 'react', fullName: 'facebook/react' });
+
+  const url = parseRepoIdentifier('https://github.com/torvalds/linux.git');
+  assert.deepEqual(url, { owner: 'torvalds', repo: 'linux', fullName: 'torvalds/linux' });
+
+  const ssh = parseRepoIdentifier('git@github.com:myorg/my-private-repo.git');
+  assert.deepEqual(ssh, { owner: 'myorg', repo: 'my-private-repo', fullName: 'myorg/my-private-repo' });
+
+  assert.equal(parseRepoIdentifier('invalid_slug_without_slash'), null);
+  assert.equal(parseRepoIdentifier(''), null);
+});
+
+test('L2: GitHubRemoteService manages config and token state safely', () => {
+  const { GitHubRemoteService } = require('../../src/main/services/githubRemoteService');
+  const tempDir = path.join(__dirname, '../fixtures/gh-test');
+  const service = new GitHubRemoteService(tempDir);
+
+  assert.equal(service.getToken(), null);
+  assert.equal(service.getUser(), null);
+
+  service.saveConfig({ token: 'test_token_123', user: { login: 'octocat' } });
+  assert.equal(service.getToken(), 'test_token_123');
+  assert.equal(service.getUser().login, 'octocat');
+
+  service.logout();
+  assert.equal(service.getToken(), null);
+  assert.equal(service.getUser(), null);
+
+  try {
+    require('fs').rmSync(tempDir, { recursive: true, force: true });
+  } catch (e) {}
+});
+
+test('L2: run.ps1 is strictly prohibited and must not exist in repository', () => {
+  const fs = require('fs');
+  const runPs1Path = path.resolve(__dirname, '../../run.ps1');
+  assert.equal(fs.existsSync(runPs1Path), false, 'run.ps1 must not exist');
+
+  // Verify only run.bat and run.sh are present
+  const runBatPath = path.resolve(__dirname, '../../run.bat');
+  const runShPath = path.resolve(__dirname, '../../run.sh');
+  assert.equal(fs.existsSync(runBatPath), true, 'run.bat must exist');
+  assert.equal(fs.existsSync(runShPath), true, 'run.sh must exist');
+});

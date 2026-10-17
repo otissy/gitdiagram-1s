@@ -5,7 +5,9 @@ const fs = require('fs');
 const fileService = require('./services/fileService');
 const gitService = require('./services/gitService');
 const diagramService = require('./services/diagramService');
+const { GitHubRemoteService } = require('./services/githubRemoteService');
 
+let githubRemoteService = null;
 let mainWindow = null;
 let currentWatcher = null;
 const recentsFilePath = path.join(app.getPath('userData'), 'recent-repos.json');
@@ -221,6 +223,39 @@ function registerIpcHandlers() {
     }
   });
 
+  // GitHub Integration & Remote Repositories (Public & Private)
+  ipcMain.handle('github:setToken', async (event, token) => {
+    return await githubRemoteService.setToken(token);
+  });
+
+  ipcMain.handle('github:getUser', () => {
+    return githubRemoteService.getUser();
+  });
+
+  ipcMain.handle('github:logout', () => {
+    return githubRemoteService.logout();
+  });
+
+  ipcMain.handle('github:getUserRepos', async () => {
+    return await githubRemoteService.getUserRepositories();
+  });
+
+  ipcMain.handle('github:fetchRemoteRepo', async (event, repoInput) => {
+    const onProgress = (msg) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('github:progress', msg);
+      }
+    };
+    try {
+      const res = await githubRemoteService.fetchRemoteRepository(repoInput, onProgress);
+      saveRecentRepo(res.path);
+      setupFolderWatcher(res.path);
+      return { success: true, ...res };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   // Window Controls
   ipcMain.handle('window:minimize', () => {
     if (mainWindow) mainWindow.minimize();
@@ -244,6 +279,7 @@ function registerIpcHandlers() {
 
 // App lifecycle
 app.whenReady().then(() => {
+  githubRemoteService = new GitHubRemoteService(app.getPath('userData'));
   registerIpcHandlers();
   createWindow();
 

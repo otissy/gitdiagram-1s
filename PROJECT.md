@@ -4,7 +4,7 @@ The map of the ground. Read before any task; update at the end of every task.
 
 ## Current state
 
-GitDiagram 1s is a Windows native desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It operates 100% offline on any local folder or Git repository with drag-and-drop, native folder pickers, and synchronized code-and-diagram exploration.
+GitDiagram 1s is a Windows and Linux desktop application combining the fast, comprehensive code-reading experience of GitHub1s (Monaco Editor, file explorer, tabs, git commit diffs) with the visual intelligence of GitDiagram (interactive codebase architecture diagrams, module dependency graphs, AST import links, SVG/Mermaid export). It supports opening any local folder or Git repository, as well as typing/pasting any remote GitHub repository (`owner/repo` or URL) for public repos and logging in with a GitHub Personal Access Token to explore private repositories.
 
 ## How to run and test
 
@@ -17,14 +17,16 @@ GitDiagram 1s is a Windows native desktop application combining the fast, compre
 
 | Limit | What it means |
 |---|---|
-| `electron` | Standard desktop windowing runtime on Windows 10/11 |
-| Local filesystem | Large repos need fast scanning with `.gitignore` and default ignore (`node_modules`, `.git`, `dist`, etc.) |
-| Offline / No-cloud | 100% local operation: Monaco editor assets and diagram renderers must be bundled locally |
+| `run.ps1` PROHIBITED | PowerShell launch scripts (`run.ps1`) are not permitted. Use `.\run.bat` on Windows, `./run.sh` on Linux, or `npm start`. |
+| `electron` | Desktop windowing runtime on Windows 10/11 and Linux |
+| Local filesystem & Cache | Large repos need fast scanning with `.gitignore` and default ignores (`node_modules`, `.git`, `dist`, etc.); remote repos are shallow-cached locally. |
+| Private Repos | Requires GitHub token with `repo` scope to clone and list user private repositories |
 
 ## Sources of truth
 
 - File scanner & Git parser → `src/main/services/gitService.js` and `src/main/services/fileService.js`
 - Diagram extraction & AST dependency resolver → `src/main/services/diagramService.js`
+- GitHub remote cloning & authentication → `src/main/services/githubRemoteService.js`
 - IPC contracts → `src/preload/preload.js`
 - Frontend UI & Monaco/Canvas controller → `src/renderer/`
 
